@@ -1,5 +1,24 @@
 # Progress Log
 
+## 2026-06-14 (later) — overnight verification run
+
+Re-invoked overnight with OVERNIGHT_PLAN.md tasks 1–6 already complete and pushed
+(`33361a1`). Per Hard Rule 9 I did **not** improvise work outside the plan; this
+run only verified integrity:
+
+- Git: working tree clean; local HEAD `33361a1` == `origin/main`.
+- All four mandated gates green: `test_scoring` (11), `test_judge` (5),
+  `test_memory_retrieval` (4), `router.py --selftest`. Also re-ran the bonus
+  gates: `context_scale.py --selftest` and `test_judge_agreement.py` (9) — both pass.
+- Confirmed every claimed artifact is tracked: router eval, the coverage-curve
+  monotone test (`tests/test_scoring.py:118`), PAPER.md, judge-validation
+  scaffolding, the 14 `results/published/` files, and the context-scale report +
+  FINDINGS §Context-Length Scaling.
+
+**Nothing left in the plan that an autonomous run can do.** The only open item is
+task 4's human-labeling step, which is correctly blocked on Lachy (labels must not
+be fabricated). No code changed this run; this note is the only edit.
+
 ## 2026-06-14 — overnight agent session (tasks 1–6 of OVERNIGHT_PLAN.md)
 
 ### State at start
