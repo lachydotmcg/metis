@@ -195,3 +195,40 @@ with distinctive vocabulary, so keyword rules fire cleanly. Real-world prompts t
 straddle categories or use unusual phrasing will degrade accuracy; the min-confidence
 gate is the first defence. Robustness testing on out-of-distribution prompts is the
 next step before claiming production readiness.
+
+## Context-Length Scaling (2026-06-14)
+
+Full artifact: `results/published/context_scale_qwen3_8b/report.md`
+(signature experiment §6 in `docs/RESEARCH.md`, run via `context_scale.py`).
+
+The v1 reasoning tasks were padded with neutral filler to fill 512 / 2k / 8k / 16k of
+context, then run on qwen3:8b at N=3. Decode speed is the headline; quality is a
+secondary check that the padded task is still answered.
+
+| context | tasks | score (mean) | decode tok/s | wall_s (mean) | errors |
+|---|---:|---:|---:|---:|---:|
+| 512 | 5 | 1.00 | 41.4 | 19.2 | 0 |
+| 2048 | 5 | 1.00 | 40.0 | 13.7 | 0 |
+| 8192 | 5 | 1.00 | 36.5 | 16.8 | 0 |
+| 16384 | 5 | 1.00 | 9.8 | 53.3 | 0 |
+
+Decode holds near 40 tok/s out to 8k, then **collapses to 9.8 tok/s at 16k — about a
+4× slowdown — with zero errors**. That "fits but crawls" signature is the Windows WDDM
+silent-spill the project predicted (RESEARCH.md §3): the KV cache for 16k tokens
+overflows the 8 GB card into shared system memory instead of erroring, so the model
+keeps answering correctly (quality stays 1.00) at a fraction of the speed. The cliff,
+not a gentle slope, is the point — between 8k and 16k the card crosses from
+VRAM-resident to spilled.
+
+### Honest caveats
+
+- Context length here is filler padding, not genuinely information-dense long input;
+  it stresses the KV cache and prefill, which is what this experiment is about, but it
+  is not a long-context *comprehension* test.
+- The quality column uses a lightweight standalone scorer (`\boxed{}`/`Answer:` aware,
+  thinking stripped), not the full `metis` scoring pass; it confirms the task is still
+  answered, it is not a coverage claim.
+- Decode tok/s is runtime-reported (`eval_count / eval_duration`). The 16k cliff is large
+  enough to be unambiguous, but exact tok/s at the spill boundary is noisy.
+- Single fingerprint (RTX 3060 8 GB). The 16k boundary is card- and quant-specific; the
+  *shape* (cliff, not slope) is the transferable finding, the exact threshold is not.

@@ -31,6 +31,17 @@ Raw model outputs (`records.jsonl`) are excluded — regenerate them with `metis
   depth 5.
 - **`step_depth/step_depth.json`** — raw step-depth data.
 
+### Context-Length Scaling (qwen3:8b)
+
+- **`context_scale_qwen3_8b/report.md`** — decode speed and answer quality for v1
+  reasoning tasks padded to 512 / 2k / 8k / 16k context, qwen3:8b, N=3. Decode holds
+  near 40 tok/s through 8k then collapses to **9.8 tok/s at 16k with zero errors** —
+  the Windows WDDM / KV-cache silent-spill cliff (RESEARCH.md §3). Quality stays 1.00,
+  so the model still answers correctly, just ~4× slower once the KV cache overflows
+  8 GB into shared system memory.
+- **`context_scale_qwen3_8b/results.jsonl`** — per-generation metrics (context size,
+  decode tok/s, wall time, score; no prompt text).
+
 ### Headline Local Run (2026-06-12, run 20260612_173212)
 
 Three models (qwen3:1.7b, qwen3:8b, deepseek-r1:7b), N=5, 315 generations, 0 errors.

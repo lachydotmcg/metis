@@ -36,11 +36,17 @@ The agentic step-depth ladder is the starkest finding: qwen3:1.7b and deepseek-r
 handle a single tool-call, then break completely at depth 2. **qwen3:8b matches Claude
 through depth 5** — the first local tier where multi-step tool use is reliable.
 
+Context length has its own cliff: qwen3:8b decodes near 40 tok/s out to 8k context,
+then **drops to ~10 tok/s at 16k with no error** — the KV cache spilling 8 GB of VRAM
+into shared system memory (Windows WDDM silent spill). It still answers correctly, just
+~4× slower.
+
 Published artifacts in [`results/published/`](results/published/):
 - [`routing_qwen3_8b_vs_deepseek_v4_pro.md`](results/published/routing_qwen3_8b_vs_deepseek_v4_pro.md) — Phase 0 routing simulation
 - [`router_eval_qwen3_8b_vs_deepseek_v4_pro.md`](results/published/router_eval_qwen3_8b_vs_deepseek_v4_pro.md) — Phase 1 classifier eval
 - [`comparison_local_vs_claude/findings.md`](results/published/comparison_local_vs_claude/findings.md) — local vs Claude quality comparison
 - [`step_depth/step_depth_findings.md`](results/published/step_depth/step_depth_findings.md) — agentic step-depth degradation
+- [`context_scale_qwen3_8b/report.md`](results/published/context_scale_qwen3_8b/report.md) — context-length scaling: the 16k KV-cache spill cliff
 - [`headline_run_20260612_173212/report.md`](results/published/headline_run_20260612_173212/report.md) — headline run report (qwen3:1.7b, qwen3:8b, deepseek-r1:7b, N=5)
 
 ## Quickstart
