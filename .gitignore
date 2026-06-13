@@ -8,3 +8,8 @@ dist/
 results/*
 !results/published/
 !results/published/**
+
+# Generated validation artifacts (regenerate via validation/extract_labels.py;
+# human_labels.jsonl is filled in locally by the labeller).
+validation/to_label.jsonl
+validation/human_labels.jsonl

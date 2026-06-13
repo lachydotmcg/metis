@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-06-14
+
+- Added `context_scale.py`, a self-contained context-length scaling experiment
+  (RESEARCH.md §6): pads v1 reasoning tasks to 512/2k/8k/16k context and measures
+  decode speed + answer quality on qwen3:8b. Includes a preflight quiesce check
+  (CPU limit 40%, never `--force`) and a mock-backend selftest.
+- Fixed the experiment's prior-attempt defects: a real-path `NameError`, a
+  malformed report table, and a brittle answer scorer (now strips `<think>` and
+  parses markdown `**Answer:**` and LaTeX `\boxed{}` finals, with regression tests).
+- Ran qwen3:8b N=3: decode collapses from ~40 tok/s (≤8k) to 9.8 tok/s at 16k with
+  zero errors — the Windows WDDM silent-spill / KV-cache cliff. Published the report
+  and metrics under `results/published/context_scale_qwen3_8b/`, added a
+  `docs/FINDINGS.md` section, and linked it from the README.
+- Ignored the regenerable validation templates (`validation/to_label.jsonl`,
+  `validation/human_labels.jsonl`) in `.gitignore`.
+
 ## 2026-06-12
 
 - Implemented tier-2 judge scoring via `metis judge`: pinned config validation, rubric-based pairwise position-swap judging, atomic `judge_scores.jsonl` output, and report merging that preserves tier-1 `scores.jsonl`.

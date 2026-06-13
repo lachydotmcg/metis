@@ -24,15 +24,15 @@ Build order follows the principle: methodology first, GUI last. Status as of 202
 
 ## Next (priority order)
 
-1. [ ] **Judge validation set** — collect the ~50 human-labeled items and report judge-human agreement before paper use.
+1. [ ] **Judge validation set** — collect the ~50 human-labeled items and report judge-human agreement before paper use. *(Scaffolding landed: `validation/extract_labels.py` + `validation/agreement.py` + tests; waiting on human labels.)*
 2. [ ] **llama.cpp server backend** — needed for controlled `n_gpu_layers` sweeps.
 3. [ ] **Offload-cliff sweep mode** — automate runs across `num_gpu` values, plot tok/s vs layers.
-4. [ ] **WDDM silent-spill detection** — shared-GPU-memory sampling + perf-cliff heuristic, flagged in reports (design in RESEARCH.md).
-5. [ ] **Context-length scaling mode** — same tasks padded to 512/2k/8k/16k context.
+4. [ ] **WDDM silent-spill detection** — shared-GPU-memory sampling + perf-cliff heuristic, flagged in reports (design in RESEARCH.md). *(The spill is now empirically observed — see the 16k cliff in the context-length scaling result — but automatic in-report detection is still unbuilt.)*
+5. [x] **Context-length scaling mode** — same tasks padded to 512/2k/8k/16k context. `context_scale.py`; qwen3:8b shows a decode cliff (~40→9.8 tok/s) at 16k from KV-cache spill.
 6. [ ] **Realistic-conditions mode** — synthetic RAM pressure during runs.
-7. [ ] **Coverage curve rendering** — full curve over thresholds (data already collected), charts in HTML report.
+7. [x] **Coverage curve rendering** — full curve over thresholds (data already collected), charts in HTML report.
 8. [ ] **Tauri viewer** — read-only over run artifacts. Deliberately last.
-9. [ ] **Paper draft** — skeleton in RESEARCH.md.
+9. [x] **Paper draft** — `docs/PAPER.md` drafted from the skeleton in RESEARCH.md.
 
 ## Rules that survive any roadmap change
 
