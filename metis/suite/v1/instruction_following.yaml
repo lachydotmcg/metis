@@ -1,0 +1,91 @@
+# Metis suite v1.0 — instruction following. IFEval-style: every constraint is
+# mechanically verifiable; score is the fraction of constraints passed. FROZEN.
+version: "1.0"
+category: instruction_following
+tasks:
+  - id: instruction.three_sentences
+    max_tokens: 1024
+    oracle_text: >
+      Solar panels convert sunlight into electricity for homes and factories.
+      Wind turbines harvest moving air to do the same job. Batteries store the
+      surplus so evenings stay bright.
+    prompt: |
+      Write exactly three sentences about renewable energy. Each sentence must
+      begin with a different word, and you may not use the word "power"
+      anywhere in your answer.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: exact_sentences, value: 3}
+        - {kind: distinct_first_words}
+        - {kind: forbidden_words, value: [power]}
+
+  - id: instruction.json_meta
+    max_tokens: 1024
+    oracle_text: |
+      {"title": "Composting at Home", "tags": ["compost", "garden", "waste", "soil"], "priority": 2}
+    prompt: |
+      Create a metadata object for a blog post about home composting. Respond
+      with JSON only: an object with key "title" (a string), key "tags" (an
+      array of exactly 4 lowercase strings) and key "priority" (an integer
+      from 1 to 5).
+    scoring:
+      type: constraints
+      checks:
+        - {kind: json_only}
+        - {kind: json_keys, value: {title: str, tags: list, priority: int}}
+        - {kind: json_array_len, value: {key: tags, len: 4}}
+        - {kind: json_list_lowercase, value: {key: tags}}
+        - {kind: json_int_range, value: {key: priority, min: 1, max: 5}}
+
+  - id: instruction.capitals
+    max_tokens: 1024
+    oracle_text: |
+      Brasilia
+      Cairo
+      Ottawa
+      Paris
+      Tokyo
+    prompt: |
+      List the capital cities of Japan, France, Egypt, Canada and Brazil, one
+      city per line, in alphabetical order. No numbering, no extra text, just
+      the five lines.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: exact_lines, value: 5}
+        - {kind: alphabetical_lines}
+        - {kind: no_digits}
+        - {kind: required_words, value: [Cairo, Ottawa, Paris, Tokyo]}
+
+  - id: instruction.word_window
+    max_tokens: 1024
+    oracle_text: >
+      Photosynthesis is the process plants use to turn sunlight, water, and
+      carbon dioxide into sugar and oxygen. Chlorophyll in leaf cells absorbs
+      light, which drives reactions splitting water and fixing carbon. The
+      sugars feed growth, while oxygen escapes through pores, supplying the
+      air that animals and people breathe.
+    prompt: |
+      Explain photosynthesis in between 40 and 60 words.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: min_words, value: 40}
+        - {kind: max_words, value: 60}
+
+  - id: instruction.ocean_taboo
+    max_tokens: 1024
+    oracle_text: >
+      The ocean is a vast salty expanse covering most of the planet's surface.
+      Currents circle the globe beneath its waves, moving heat and nutrients.
+      Countless creatures, from plankton to whales, depend on its depths.
+    prompt: |
+      Describe the ocean in two or three sentences without using the words
+      "water", "blue" or "sea".
+    scoring:
+      type: constraints
+      checks:
+        - {kind: min_sentences, value: 2}
+        - {kind: max_sentences, value: 3}
+        - {kind: forbidden_words, value: [water, blue, sea]}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metis-bench"
+version = "0.1.1"
+description = "Research-grade local LLM benchmarking: quality x hardware x dollars on the machine you own."
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "psutil>=5.9",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+nvml = ["pynvml>=11.5"]
+
+[project.scripts]
+metis = "metis.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["metis*"]
+
+[tool.setuptools.package-data]
+"metis.suite" = ["v1/*.yaml", "v2/*.yaml"]

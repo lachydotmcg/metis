@@ -1,0 +1,74 @@
+# Metis suite v2.0 — agentic step-depth ladder. New tasks live in v2 so the
+# frozen v1 suite remains comparable.
+version: "2.0"
+category: agentic_ladder
+tasks:
+  - id: agentic_ladder.depth1_fact
+    required_tool_depth: 1
+    max_steps: 4
+    max_tokens: 1024
+    prompt: |
+      Using the tools available, find the archive code assigned to the
+      Lornmere Observatory. Give the code as your final answer.
+    tools:
+      corpus:
+        "archive code of lornmere observatory": "The Lornmere Observatory archive code is Nimbus."
+    scoring:
+      type: agentic_final
+      expected: Nimbus
+      match: text
+
+  - id: agentic_ladder.depth2_sum
+    required_tool_depth: 2
+    max_steps: 6
+    max_tokens: 1024
+    prompt: |
+      Using the tools available, find the combined seed inventory of Brindle
+      Station and Caldor Station. Give the number as your final answer.
+    tools:
+      corpus:
+        "seed inventory of brindle station": "Brindle Station stores 28,450 viable seed packets."
+        "seed inventory of caldor station": "Caldor Station stores 44,970 viable seed packets."
+    scoring:
+      type: agentic_final
+      expected: 73420
+      match: numeric
+
+  - id: agentic_ladder.depth3_argmax
+    required_tool_depth: 3
+    max_steps: 6
+    max_tokens: 1024
+    prompt: |
+      Three fictional archives reported sealed map counts: Vesper, Norwick and
+      Ellgate. Using the tools available, determine which archive has the
+      largest sealed map count. Give the archive name as your final answer.
+    tools:
+      corpus:
+        "sealed map count of vesper archive": "Vesper Archive holds 312 sealed maps."
+        "sealed map count of norwick archive": "Norwick Archive holds 427 sealed maps."
+        "sealed map count of ellgate archive": "Ellgate Archive holds 389 sealed maps."
+    scoring:
+      type: agentic_final
+      expected: Norwick
+      match: text
+
+  - id: agentic_ladder.depth5_checksum
+    required_tool_depth: 5
+    max_steps: 8
+    max_tokens: 1024
+    prompt: |
+      Using the tools available, compute the evacuation checksum: look up the
+      crate counts for Halden, Ivara, Kest and Lumo, then look up the sector
+      multiplier. Add the four crate counts and multiply the sum by the sector
+      multiplier. Give the number as your final answer.
+    tools:
+      corpus:
+        "crate count of halden depot": "Halden Depot has 17 crates ready."
+        "crate count of ivara depot": "Ivara Depot has 29 crates ready."
+        "crate count of kest depot": "Kest Depot has 34 crates ready."
+        "crate count of lumo depot": "Lumo Depot has 41 crates ready."
+        "sector multiplier": "The sector multiplier is 6."
+    scoring:
+      type: agentic_final
+      expected: 726
+      match: numeric

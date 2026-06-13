@@ -1,0 +1,55 @@
+# Metis suite v1.0 — agentic tool use. All entities are fictional so answers
+# cannot exist in training data. Tools: lookup(query) over the task corpus and
+# calc(expression). Protocol in metis/agentic.py. FROZEN.
+version: "1.0"
+category: agentic
+tasks:
+  - id: agentic.population_sum
+    max_steps: 6
+    max_tokens: 2048
+    prompt: |
+      Using the tools available, find the combined population of the towns of
+      Veldora and Marrowgate. Give the number as your final answer.
+    tools:
+      corpus:
+        "population of veldora": "Veldora has a population of 48,210."
+        "population of marrowgate": "Marrowgate has a population of 36,795."
+    scoring:
+      type: agentic_final
+      expected: 85005
+      match: numeric
+
+  - id: agentic.revenue_per_resident
+    max_steps: 10
+    max_tokens: 2048
+    prompt: |
+      Three towns reported annual revenue: Veldora, Marrowgate and Ostrel.
+      Using the tools available, work out which town has the highest revenue
+      per resident. Give the town's name as your final answer.
+    tools:
+      corpus:
+        "revenue of veldora": "Veldora reported annual revenue of $12,400,000."
+        "revenue of marrowgate": "Marrowgate reported annual revenue of $9,900,000."
+        "revenue of ostrel": "Ostrel reported annual revenue of $4,100,000."
+        "population of veldora": "Veldora has a population of 48,210."
+        "population of marrowgate": "Marrowgate has a population of 36,795."
+        "population of ostrel": "Ostrel has a population of 11,020."
+    scoring:
+      type: agentic_final
+      expected: Ostrel
+      match: text
+
+  - id: agentic.flaky_lookup
+    max_steps: 6
+    max_tokens: 2048
+    fail_first_call: true
+    prompt: |
+      Using the tools available, find the year the Calder Bridge opened. Give
+      the year as your final answer.
+    tools:
+      corpus:
+        "opening year of the calder bridge": "The Calder Bridge opened to traffic in 1987."
+    scoring:
+      type: agentic_final
+      expected: 1987
+      match: numeric

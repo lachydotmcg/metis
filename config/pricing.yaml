@@ -1,0 +1,27 @@
+# Economics configuration. Metis deliberately ships NO default prices: rates
+# rot, and a stale number silently presented as current is worse than an
+# error. Fill these in from your electricity bill and your API provider's
+# pricing page before running `metis economics`.
+
+currency: AUD
+
+# Your electricity tariff. Check your bill; Victorian rates are commonly in
+# the 0.25-0.35 range. Set to 0.35 (top of Lachy's range) as the conservative
+# case: if local routing wins here, it wins across the whole 0.26-0.35 band.
+electricity_per_kwh: 0.35
+
+# Optional: spread hardware cost over its useful life, e.g. a $500 GPU over
+# 3 years of 4h/day is roughly 0.11/hour. Leave 0 to ignore.
+hardware_amortisation_per_hour: 0.0
+
+# The cloud API you are comparing against. Set from the provider's CURRENT
+# pricing page (per million tokens, USD), and the USD->AUD rate.
+# Priced model MUST be the model the router escalates to. We route to
+# deepseek-v4-pro, so these are its current standard rates (per DeepSeek's
+# pricing page, USD per million tokens). Note: a promo may be active; standard
+# is reportedly higher ($1.74/$3.48) so this is the optimistic-for-cloud case.
+api_reference:
+  label: "deepseek-v4-pro"
+  usd_per_mtok_input: 0.435
+  usd_per_mtok_output: 0.87
+  usd_to_local: 1.42

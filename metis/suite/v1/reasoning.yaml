@@ -1,0 +1,70 @@
+# Metis suite v1.0 — reasoning. All tasks original (contamination policy:
+# docs/METHODOLOGY.md §5). FROZEN: edits require a new suite version.
+version: "1.0"
+category: reasoning
+tasks:
+  - id: reasoning.candles
+    max_tokens: 2048
+    prompt: |
+      Lena buys 4 boxes of candles with 12 candles in each box. She burns 7
+      candles per week for 5 weeks, then gives 6 candles to a neighbour.
+      How many candles does she have left?
+
+      Work through it step by step, then end your reply with a line in exactly
+      this format: Answer: <number>
+    scoring:
+      type: numeric_exact
+      expected: 7
+
+  - id: reasoning.sports
+    max_tokens: 2048
+    prompt: |
+      Ari, Bec and Cal each play exactly one of tennis, soccer and golf, with
+      no sport shared. Ari does not play tennis. Bec plays neither tennis nor
+      golf. Who plays tennis?
+
+      Reason it out, then end your reply with a line in exactly this format:
+      Answer: <name>
+    scoring:
+      type: choice_exact
+      expected: Cal
+      options: [Ari, Bec, Cal]
+
+  - id: reasoning.calendar
+    max_tokens: 2048
+    prompt: |
+      In a certain month, the 3rd falls on a Tuesday. What day of the week is
+      the 21st of that month?
+
+      Reason it out, then end your reply with a line in exactly this format:
+      Answer: <day of the week>
+    scoring:
+      type: choice_exact
+      expected: Saturday
+      options: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+
+  - id: reasoning.tank
+    max_tokens: 2048
+    prompt: |
+      A water tank holds 240 litres and is currently 25% full. A pump adds 18
+      litres per minute while a leak drains 3 litres per minute. How many
+      minutes until the tank is full?
+
+      Work through it step by step, then end your reply with a line in exactly
+      this format: Answer: <number>
+    scoring:
+      type: numeric_exact
+      expected: 12
+
+  - id: reasoning.ladder
+    max_tokens: 2048
+    prompt: |
+      Every painter in the guild owns a ladder. Marta owns a ladder. Based
+      only on these statements, is Marta necessarily a painter in the guild?
+
+      Explain briefly, then end your reply with a line in exactly this format:
+      Answer: <yes or no>
+    scoring:
+      type: choice_exact
+      expected: "no"
+      options: ["yes", "no"]

@@ -1,0 +1,81 @@
+# Metis suite v1.0 — summarisation. Source passages are original. Constraint
+# scoring is the v0.1 floor; faithfulness needs the judge tier (needs_judge).
+# FROZEN.
+version: "1.0"
+category: summarisation
+tasks:
+  - id: summarisation.ferry
+    max_tokens: 1024
+    oracle_text: >
+      Bayport council will change the Westhaven ferry timetable from 1 March:
+      peak crossings increase to every 20 minutes, while weekend services fall
+      to every 90 minutes. Commuters welcomed extra peak runs but opposed
+      weekend cuts; a petition is growing and the council will review after
+      six months.
+    prompt: |
+      Summarise the following article in at most 50 words. Your summary must
+      mention the ferry and the timetable.
+
+      The Bayport council confirmed on Monday that the Westhaven ferry
+      timetable will change from 1 March. Peak services will run every 20
+      minutes instead of every 30, adding six crossings each weekday morning.
+      Off-peak weekend services drop from hourly to every 90 minutes, a change
+      the council attributes to falling winter patronage and rising fuel
+      costs. Commuter groups welcomed the extra peak crossings but criticised
+      the weekend cuts, arguing they isolate residents who rely on the ferry
+      for hospital appointments. A petition against the weekend reduction
+      gathered 2,140 signatures in its first week. The council will review the
+      timetable after six months, with patronage data published quarterly.
+    scoring:
+      type: constraints
+      needs_judge: true
+      checks:
+        - {kind: max_words, value: 50}
+        - {kind: required_words, value: [ferry, timetable]}
+
+  - id: summarisation.changelog
+    max_tokens: 1024
+    oracle_text: |
+      - Version 2.4.1 fixes the unicode export crash and patches session tokens.
+      - Adds a dark mode toggle and 40% faster startup.
+      - Deprecates the legacy CSV importer.
+    prompt: |
+      Summarise the changelog below as exactly three bullet points. Each
+      bullet must be a line starting with "- " and contain at most 15 words.
+      Mention the version number 2.4.1 somewhere in your answer.
+
+      Release 2.4.1
+      * Fixed a crash when exporting files whose names contain unicode characters
+      * Added a dark mode toggle under Settings > Appearance
+      * Reduced application startup time by roughly 40%
+      * Deprecated the legacy CSV importer (removal planned for 3.0)
+      * Patched a security issue where session tokens persisted after logout
+    scoring:
+      type: constraints
+      needs_judge: true
+      checks:
+        - {kind: exact_bullets, value: 3}
+        - {kind: bullet_max_words, value: 15}
+        - {kind: required_words, value: ["2.4.1"]}
+
+  - id: summarisation.actions
+    max_tokens: 1024
+    oracle_text: |
+      {"action_items": [
+        {"owner": "Priya", "task": "draft the Q3 budget by Friday"},
+        {"owner": "Marcus", "task": "fix the login redirect bug"},
+        {"owner": "Aisha", "task": "schedule the vendor demo next week"}]}
+    prompt: |
+      Extract the action items from these meeting notes. Respond with JSON
+      only: an object with a single key "action_items" whose value is an array
+      of exactly 3 objects, each with string keys "owner" and "task".
+
+      Standup notes, Tuesday: Priya to draft the Q3 budget by Friday. Marcus
+      will fix the login redirect bug. Aisha to schedule the vendor demo next
+      week. General discussion about the office move went long; no decision.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: json_only}
+        - {kind: json_keys, value: {action_items: list}}
+        - {kind: json_array_len, value: {key: action_items, len: 3}}

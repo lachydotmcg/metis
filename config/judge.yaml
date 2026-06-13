@@ -1,0 +1,19 @@
+# LLM-as-judge configuration. Pin an exact model/version before running
+# `metis judge`; aliases like "latest" are rejected.
+
+provider: anthropic            # judge runs in the cloud, pinned like any dep
+model: "claude-sonnet-4-6"
+api_key_env: ANTHROPIC_API_KEY # key read from env, never stored here
+api_version: "2023-06-01"
+max_tokens: 768
+temperature: 0
+timeout_s: 600
+
+protocol:
+  mode: pairwise_position_swap # judge A/B then B/A, average the two
+  rubric: rubrics/summarisation.md
+  scale: [0, 1]
+
+validation:
+  human_labels: validation/human_labels.jsonl  # ~50 hand-labeled items
+  report_agreement: true       # judge-human agreement goes in the paper

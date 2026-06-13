@@ -1,0 +1,157 @@
+# Metis suite v1.0 — coding. Each task carries oracle_code (a reference
+# solution); the harness self-test runs the test cases against it, so a broken
+# test cannot masquerade as a model failure. FROZEN.
+version: "1.0"
+category: coding
+tasks:
+  - id: coding.rle
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `rle(s: str) -> str` that run-length encodes a
+      string: each maximal run of a character becomes the character followed
+      by the length of the run. Example: rle("aaabbc") returns "a3b2c1".
+      An empty string returns "".
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def rle(s):
+          if not s:
+              return ""
+          out = []
+          prev, count = s[0], 1
+          for ch in s[1:]:
+              if ch == prev:
+                  count += 1
+              else:
+                  out.append(f"{prev}{count}")
+                  prev, count = ch, 1
+          out.append(f"{prev}{count}")
+          return "".join(out)
+    scoring:
+      type: code_tests
+      entry_point: rle
+      tests:
+        - {call: "rle('aaabbc')", expected: "'a3b2c1'"}
+        - {call: "rle('')", expected: "''"}
+        - {call: "rle('x')", expected: "'x1'"}
+        - {call: "rle('aabbaa')", expected: "'a2b2a2'"}
+
+  - id: coding.second_largest
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `second_largest(nums: list) -> int | None` that
+      returns the second largest distinct value in the list, or None if there
+      are fewer than two distinct values. Example: second_largest([3, 1, 4, 1, 5])
+      returns 4; second_largest([7, 7, 7]) returns None.
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def second_largest(nums):
+          uniq = sorted(set(nums))
+          return uniq[-2] if len(uniq) >= 2 else None
+    scoring:
+      type: code_tests
+      entry_point: second_largest
+      tests:
+        - {call: "second_largest([3, 1, 4, 1, 5])", expected: "4"}
+        - {call: "second_largest([7, 7, 7])", expected: "None"}
+        - {call: "second_largest([2, 9])", expected: "2"}
+        - {call: "second_largest([-1, -5])", expected: "-5"}
+
+  - id: coding.balanced
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `is_balanced(s: str) -> bool` that returns True
+      if every bracket in the string is correctly matched and nested. The
+      brackets to consider are (), [] and {}; all other characters are
+      ignored. An empty string is balanced.
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def is_balanced(s):
+          pairs = {")": "(", "]": "[", "}": "{"}
+          stack = []
+          for ch in s:
+              if ch in "([{":
+                  stack.append(ch)
+              elif ch in pairs:
+                  if not stack or stack.pop() != pairs[ch]:
+                      return False
+          return not stack
+    scoring:
+      type: code_tests
+      entry_point: is_balanced
+      tests:
+        - {call: "is_balanced('([]{})')", expected: "True"}
+        - {call: "is_balanced('([)]')", expected: "False"}
+        - {call: "is_balanced('')", expected: "True"}
+        - {call: "is_balanced('(((')", expected: "False"}
+        - {call: "is_balanced('a(b)c[d]')", expected: "True"}
+
+  - id: coding.merge_intervals
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `merge_intervals(intervals: list) -> list` that
+      takes a list of [start, end] integer pairs and returns them merged and
+      sorted by start. Overlapping or touching intervals merge into one (so
+      [1, 2] and [2, 3] become [1, 3]). An empty list returns an empty list.
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def merge_intervals(intervals):
+          merged = []
+          for start, end in sorted(intervals):
+              if merged and start <= merged[-1][1]:
+                  merged[-1][1] = max(merged[-1][1], end)
+              else:
+                  merged.append([start, end])
+          return merged
+    scoring:
+      type: code_tests
+      entry_point: merge_intervals
+      tests:
+        - {call: "merge_intervals([[1, 3], [2, 6], [8, 10]])", expected: "[[1, 6], [8, 10]]"}
+        - {call: "merge_intervals([])", expected: "[]"}
+        - {call: "merge_intervals([[5, 5], [1, 2]])", expected: "[[1, 2], [5, 5]]"}
+        - {call: "merge_intervals([[1, 2], [2, 3]])", expected: "[[1, 3]]"}
+
+  - id: coding.fix_clamp
+    max_tokens: 2048
+    prompt: |
+      The following Python function is meant to clamp every value in a list
+      into the range [lo, hi], but it has a bug:
+
+      ```python
+      def clamp(values, lo, hi):
+          out = []
+          for v in values:
+              if v < lo:
+                  out.append(lo)
+              if v > hi:
+                  out.append(hi)
+              else:
+                  out.append(v)
+          return out
+      ```
+
+      Fix it. Reply with a single fenced python code block containing only the
+      corrected function, still named `clamp`.
+    oracle_code: |
+      def clamp(values, lo, hi):
+          out = []
+          for v in values:
+              if v < lo:
+                  out.append(lo)
+              elif v > hi:
+                  out.append(hi)
+              else:
+                  out.append(v)
+          return out
+    scoring:
+      type: code_tests
+      entry_point: clamp
+      tests:
+        - {call: "clamp([1, 5, 9], 2, 8)", expected: "[2, 5, 8]"}
+        - {call: "clamp([], 0, 1)", expected: "[]"}
+        - {call: "clamp([0, 10], 0, 10)", expected: "[0, 10]"}
+        - {call: "clamp([-3], -1, 5)", expected: "[-1]"}
