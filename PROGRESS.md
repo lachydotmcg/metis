@@ -1,5 +1,23 @@
 # Progress Log
 
+## 2026-06-14 (overnight, 02:02 AEST) — verification run #2
+
+Re-invoked overnight with OVERNIGHT_PLAN.md tasks 1–6 already complete and pushed
+(`c11e796`). Per Hard Rule 9 I did **not** improvise work outside the plan; this
+run only re-verified integrity:
+
+- Git: working tree clean; local HEAD `c11e796` == `origin/main`.
+- All four mandated gates green: `test_scoring` (11), `test_judge` (5),
+  `test_memory_retrieval` (4), `router.py --selftest`. Bonus gates also green:
+  `context_scale.py --selftest` and `test_judge_agreement.py` (9).
+- Confirmed artifacts still tracked: `docs/PAPER.md`, `docs/FINDINGS.md`,
+  `validation/{extract_labels,agreement}.py`, and all **14** files under
+  `results/published/` (incl. the router eval and routing sim markdown).
+
+**Nothing left in the plan that an autonomous run can do.** The only open item is
+task 4's human-labeling step, correctly blocked on Lachy (labels must not be
+fabricated). No code changed this run; this note is the only edit.
+
 ## 2026-06-14 (later) — overnight verification run
 
 Re-invoked overnight with OVERNIGHT_PLAN.md tasks 1–6 already complete and pushed
