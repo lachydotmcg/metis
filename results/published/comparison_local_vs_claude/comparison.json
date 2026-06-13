@@ -1,0 +1,39 @@
+{
+  "local_run": "results\\20260612_173212",
+  "cloud_run": "results\\20260612_201339",
+  "cloud_reference": {
+    "model": "claude-sonnet-4-6",
+    "mean_quality": 0.9758571428571429,
+    "absolute_coverage_90": 0.9047619047619048,
+    "decode_tps": 35.31171428571429
+  },
+  "local_vs_cloud": [
+    {
+      "model": "qwen3:1.7b",
+      "mean_quality": 0.7699999999999999,
+      "relative_to_cloud_mean": 0.7835212721135776,
+      "anchored_coverage_90pct_cloud": 0.7142857142857143,
+      "absolute_coverage_90": 0.6666666666666666,
+      "decode_tps": 121.27295238095238,
+      "peak_vram_mb": 7864.0
+    },
+    {
+      "model": "qwen3:8b",
+      "mean_quality": 0.8718095238095239,
+      "relative_to_cloud_mean": 0.8748384531265533,
+      "anchored_coverage_90pct_cloud": 0.8095238095238095,
+      "absolute_coverage_90": 0.8095238095238095,
+      "decode_tps": 38.97942857142857,
+      "peak_vram_mb": 7610.0
+    },
+    {
+      "model": "deepseek-r1:7b",
+      "mean_quality": 0.6541269841269841,
+      "relative_to_cloud_mean": 0.662393240425706,
+      "anchored_coverage_90pct_cloud": 0.5238095238095238,
+      "absolute_coverage_90": 0.5238095238095238,
+      "decode_tps": 41.69209523809524,
+      "peak_vram_mb": 7806.0
+    }
+  ]
+}

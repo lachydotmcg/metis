@@ -1,0 +1,17 @@
+{
+  "cpu": "AMD Ryzen 5 5500",
+  "cores_physical": 6,
+  "cores_logical": 12,
+  "ram_total_gb": 31.9,
+  "gpus": [
+    {
+      "name": "NVIDIA GeForce RTX 3060",
+      "vram": "8192 MiB",
+      "driver": "596.49"
+    }
+  ],
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.14.4",
+  "metis": "0.1.0",
+  "fingerprint_id": "c6ecef2c8b5c"
+}

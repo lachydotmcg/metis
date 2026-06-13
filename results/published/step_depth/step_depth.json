@@ -1,0 +1,48 @@
+{
+  "local_run": "results\\step_depth_local\\20260612_203254",
+  "cloud_run": "results\\step_depth_cloud\\20260612_210103",
+  "depths": [
+    1,
+    2,
+    3,
+    5
+  ],
+  "tasks": [
+    "agentic_ladder.depth1_fact",
+    "agentic_ladder.depth2_sum",
+    "agentic_ladder.depth3_argmax",
+    "agentic_ladder.depth5_checksum"
+  ],
+  "series": {
+    "qwen3:1.7b": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "qwen3:8b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "deepseek-r1:7b": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "claude-sonnet-4-6": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "breakpoint_below_90pct": {
+    "qwen3:1.7b": "2",
+    "qwen3:8b": ">5",
+    "deepseek-r1:7b": "2",
+    "claude-sonnet-4-6": ">5"
+  }
+}

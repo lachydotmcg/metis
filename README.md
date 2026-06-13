@@ -18,6 +18,31 @@ Named for the Greek titaness of practical wisdom and cunning counsel. Fittingly 
 
 v0.1.1 — headless engine working end to end (run → score → judge → report → economics) against Ollama and cloud reference APIs. No GUI yet, by design: see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## Results
+
+On a single **RTX 3060 8 GB** machine (AMD Ryzen 5 5500, 31.9 GB RAM):
+
+**qwen3:8b reaches 87% of Claude Sonnet 4.6's mean per-task quality**, clearing a
+90%-of-Claude bar on 81% of tasks. On reasoning and summarisation it matches or
+exceeds Claude; coding remains the local weak point (0.60 vs 1.00).
+
+A per-category routing policy (local for reasoning, summarisation, agentic, and
+instruction-following; cloud for coding) keeps **100.4% of all-cloud task success
+at 47.9% lower cost** against a DeepSeek V4 Pro baseline. A keyword classifier
+routing on prompt text alone reproduces the oracle routing with **100% accuracy** on
+the v1 suite and zero backend flips.
+
+The agentic step-depth ladder is the starkest finding: qwen3:1.7b and deepseek-r1:7b
+handle a single tool-call, then break completely at depth 2. **qwen3:8b matches Claude
+through depth 5** — the first local tier where multi-step tool use is reliable.
+
+Published artifacts in [`results/published/`](results/published/):
+- [`routing_qwen3_8b_vs_deepseek_v4_pro.md`](results/published/routing_qwen3_8b_vs_deepseek_v4_pro.md) — Phase 0 routing simulation
+- [`router_eval_qwen3_8b_vs_deepseek_v4_pro.md`](results/published/router_eval_qwen3_8b_vs_deepseek_v4_pro.md) — Phase 1 classifier eval
+- [`comparison_local_vs_claude/findings.md`](results/published/comparison_local_vs_claude/findings.md) — local vs Claude quality comparison
+- [`step_depth/step_depth_findings.md`](results/published/step_depth/step_depth_findings.md) — agentic step-depth degradation
+- [`headline_run_20260612_173212/report.md`](results/published/headline_run_20260612_173212/report.md) — headline run report (qwen3:1.7b, qwen3:8b, deepseek-r1:7b, N=5)
+
 ## Quickstart
 
 ```powershell
