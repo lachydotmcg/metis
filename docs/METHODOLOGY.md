@@ -41,8 +41,20 @@ Recorded per run (in `manifest.json` / per-record):
 **Tier 2 — LLM-as-judge (summarisation faithfulness):**
 - Pinned cloud judge model + version, recorded like any other dependency
 - Pairwise vs reference with **position swap** (judges have position bias) and a rubric, not a bare 1–10
-- Validated against ~50 human-labeled items; judge–human agreement reported in the paper. This table is what separates "methodology" from "I asked a model to grade it."
+- Validated against ~50 human-labeled items; judge–human agreement (Pearson r + MAE)
+  reported in the paper. This table is what separates "methodology" from "I asked a model to grade it."
 - Judge config in `config/judge.yaml`; scoring is a re-runnable pass, so a judge upgrade never invalidates collected outputs.
+
+**Human validation workflow (pending human labels):**
+
+1. `python validation/extract_labels.py` — extracts every summarisation generation into
+   `validation/to_label.jsonl` with an empty `human_score` field. Open the file, score
+   each candidate output on 0.0–1.0 (1.0 = fully faithful, on-target; 0.0 = incorrect),
+   and save the result as `validation/human_labels.jsonl`.
+2. `python validation/agreement.py` — reads `human_labels.jsonl`, computes Pearson
+   correlation and mean absolute error between automated judge scores and human labels,
+   and prints a markdown report. Tests with a synthetic labeled set are in
+   `tests/test_judge_agreement.py`.
 
 **Reasoning-model handling**: `thinking` content is stored but stripped before scoring; only the visible answer is judged.
 
