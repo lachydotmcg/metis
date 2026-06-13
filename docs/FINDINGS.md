@@ -153,3 +153,45 @@ The practical routing policy suggested by these runs is:
 - **Pricing drift:** API prices and FX rates change. The routing cost table uses
   the configured DeepSeek V4 Pro rates in `config/pricing.yaml`, not a timeless
   constant.
+
+## Phase 1 Router Evaluation (2026-06-13)
+
+Full artifact: `results/router_eval_qwen3_8b_vs_deepseek_v4_pro.md`
+
+The keyword classifier in `router.py` achieves **100% category-prediction accuracy**
+on all 21 v1 suite prompts at default settings (threshold 0.9, min_confidence 0.34).
+Zero backend flips occur — the classifier routing is indistinguishable from the
+oracle (Phase 0, known-category) routing.
+
+### Classifier accuracy vs threshold
+
+| threshold | clf accuracy | backend flips | % of cloud success | % cost saved |
+|---|---|---|---|---|
+| 0.85 | 100% | 0 | 100.4% | 47.9% |
+| 0.90 | 100% | 0 | 100.4% | 47.9% |
+| 0.95 | 100% | 0 | 100.0% | 23.4% |
+
+At 0.85–0.90 the policy is stable (agentic, instruction_following, reasoning, and
+summarisation route locally; coding routes to cloud). At 0.95 the bar moves
+instruction_following and summarisation to cloud, costing about half the savings.
+
+### Min-confidence sensitivity (threshold = 0.90)
+
+| min_confidence | backend flips | % of cloud success | % cost saved |
+|---|---|---|---|
+| 0.34 (default) | 0 | 100.4% | 47.9% |
+| 0.50 | 0 | 100.4% | 47.9% |
+| 0.70 | 3 | 97.5% | 37.9% |
+
+Raising min_confidence to 0.70 triggers the low-confidence fail-safe for three tasks
+(reasoning.sports conf=0.64, summarisation.actions conf=0.60,
+summarisation.changelog conf=0.62), redirecting them to cloud and costing 0.58
+quality-points but adding AUD 0.0014 vs oracle. The fail-safe is working as designed.
+
+### Honest caveat
+
+This is a best-case result on a small, discriminative suite. The tasks were written
+with distinctive vocabulary, so keyword rules fire cleanly. Real-world prompts that
+straddle categories or use unusual phrasing will degrade accuracy; the min-confidence
+gate is the first defence. Robustness testing on out-of-distribution prompts is the
+next step before claiming production readiness.
