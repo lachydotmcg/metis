@@ -115,6 +115,23 @@ def test_agentic_scoring():
     assert s == 0.0
 
 
+def test_coverage_curve_monotone_nonincreasing():
+    from metis.report import COVERAGE_CURVE_GRID, _curve
+    # Arbitrary spread of task means.
+    task_means = {"t1": 1.0, "t2": 0.85, "t3": 0.7, "t4": 0.55, "t5": 0.3}
+    curve = _curve(task_means)
+    assert len(curve) == len(COVERAGE_CURVE_GRID)
+    for i in range(len(curve) - 1):
+        assert curve[i] >= curve[i + 1], (
+            f"curve not monotone non-increasing at t={COVERAGE_CURVE_GRID[i]:.2f}: "
+            f"{curve[i]:.3f} > {curve[i+1]:.3f}")
+    # Edge: curve starts at 1.0 when t=0 (all tasks score ≥ 0).
+    assert curve[0] == 1.0
+    # Edge: empty task_means -> all zeros.
+    empty = _curve({})
+    assert all(v == 0.0 for v in empty)
+
+
 def test_agentic_tools():
     from metis.agentic import lookup, safe_calc
     corpus = {"population of veldora": "Veldora has a population of 48,210."}

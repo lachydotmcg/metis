@@ -8,6 +8,17 @@ from collections import defaultdict
 from . import stats
 
 COVERAGE_THRESHOLDS = (0.5, 0.7, 0.9)
+# Fine grid for the full coverage(t) curve: 0.00, 0.05, 0.10, …, 1.00
+COVERAGE_CURVE_GRID = tuple(round(i * 0.05, 2) for i in range(21))
+
+
+def _curve(task_means: dict) -> list:
+    """Coverage at each threshold in COVERAGE_CURVE_GRID — no measurement."""
+    n = len(task_means)
+    if n == 0:
+        return [0.0] * len(COVERAGE_CURVE_GRID)
+    return [sum(m >= t for m in task_means.values()) / n
+            for t in COVERAGE_CURVE_GRID]
 
 
 def _load_jsonl(path):
@@ -73,6 +84,7 @@ def aggregate(run_dir) -> dict:
             "coverage": {t: (sum(m >= t for m in task_means.values()) / len(task_means)
                              if task_means else 0.0)
                          for t in COVERAGE_THRESHOLDS},
+            "coverage_curve": _curve(task_means),
             "decode_tps": [r["timings"]["decode_tps"] for r in ok
                            if r["timings"]["eval_s"] > 0],
             "prefill_tps": [r["timings"]["prefill_tps"] for r in ok
@@ -123,6 +135,13 @@ def _sections(data) -> list[tuple[str, list[str], list[list[str]]]]:
         ["model"] + [f"t={t}" for t in COVERAGE_THRESHOLDS],
         [[m] + [f"{v['coverage'][t]:.0%}" for t in COVERAGE_THRESHOLDS]
          for m, v in pm.items()]))
+
+    model_list = list(pm.keys())
+    out.append((
+        "Coverage curve — coverage(t) over full threshold grid",
+        ["t"] + model_list,
+        [[f"{t:.2f}"] + [f"{pm[m]['coverage_curve'][i]:.0%}" for m in model_list]
+         for i, t in enumerate(COVERAGE_CURVE_GRID)]))
 
     out.append((
         "Performance",
@@ -190,6 +209,92 @@ def render_markdown(data) -> str:
     return "\n".join(lines)
 
 
+_CURVE_COLORS = ("#e8761a", "#2196F3", "#4CAF50", "#9C27B0",
+                 "#F44336", "#795548", "#00BCD4", "#FF5722")
+
+
+def _coverage_curve_svg(data: dict) -> str:
+    """Inline SVG of coverage(t) curves for all models. Reads artifacts only."""
+    pm = data["per_model"]
+    if not pm:
+        return ""
+
+    W, H = 620, 290
+    ml, mr, mt, mb = 52, 10, 18, 42
+    lw = 148                     # legend column width
+    cw = W - ml - mr - lw        # chart area width
+    ch = H - mt - mb             # chart area height
+
+    def _esc(s: str) -> str:
+        return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;"))
+
+    def px(t: float) -> float:
+        return ml + t * cw
+
+    def py(cov: float) -> float:
+        return mt + ch - cov * ch
+
+    out = [
+        f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;max-width:{W}px;display:block">',
+        f'<rect x="{ml}" y="{mt}" width="{cw}" height="{ch}" '
+        f'fill="#fafafa" stroke="#ccc" stroke-width="1"/>',
+    ]
+
+    # Horizontal guide lines and y-axis labels
+    for frac in (0.0, 0.25, 0.5, 0.75, 1.0):
+        y = py(frac)
+        out.append(f'<line x1="{ml}" y1="{y:.1f}" x2="{ml+cw}" y2="{y:.1f}" '
+                   f'stroke="#e0e0e0" stroke-width="1"/>')
+        out.append(f'<text x="{ml-5}" y="{y+4:.1f}" text-anchor="end" '
+                   f'font-size="11" fill="#666">{int(frac * 100)}%</text>')
+
+    # Vertical guide lines and x-axis labels
+    for t_label in (0.0, 0.25, 0.5, 0.75, 1.0):
+        x = px(t_label)
+        out.append(f'<line x1="{x:.1f}" y1="{mt}" x2="{x:.1f}" y2="{mt+ch}" '
+                   f'stroke="#e0e0e0" stroke-width="1"/>')
+        out.append(f'<text x="{x:.1f}" y="{mt+ch+15}" text-anchor="middle" '
+                   f'font-size="11" fill="#666">{t_label:.2f}</text>')
+
+    # Axis labels
+    out.append(f'<text x="{ml + cw / 2:.1f}" y="{H - 3}" text-anchor="middle" '
+               f'font-size="12" fill="#444">quality threshold t</text>')
+    out.append(f'<text x="13" y="{mt + ch / 2:.1f}" text-anchor="middle" '
+               f'font-size="12" fill="#444" '
+               f'transform="rotate(-90,13,{mt + ch / 2:.1f})">coverage</text>')
+
+    # Curve per model
+    model_names = list(pm.keys())
+    for i, model in enumerate(model_names):
+        color = _CURVE_COLORS[i % len(_CURVE_COLORS)]
+        curve = pm[model].get("coverage_curve", [])
+        if not curve:
+            continue
+        pts = [(px(t), py(c)) for t, c in zip(COVERAGE_CURVE_GRID, curve)]
+        d = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+        out.append(f'<path d="{d}" fill="none" stroke="{color}" '
+                   f'stroke-width="2.5" stroke-linejoin="round"/>')
+        for x, y in pts:
+            out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" '
+                       f'fill="{color}" stroke="white" stroke-width="1"/>')
+
+    # Legend
+    lx = ml + cw + 15
+    for i, model in enumerate(model_names):
+        color = _CURVE_COLORS[i % len(_CURVE_COLORS)]
+        ly = mt + 20 + i * 22
+        out.append(f'<line x1="{lx}" y1="{ly}" x2="{lx + 20}" y2="{ly}" '
+                   f'stroke="{color}" stroke-width="2.5"/>')
+        label = model[:18] + ("…" if len(model) > 18 else "")
+        out.append(f'<text x="{lx + 25}" y="{ly + 4}" font-size="11" '
+                   f'fill="#333">{_esc(label)}</text>')
+
+    out.append("</svg>")
+    return "\n".join(out)
+
+
 _HTML_STYLE = """
 body{font-family:system-ui,Segoe UI,sans-serif;max-width:960px;margin:2rem auto;
 padding:0 1rem;color:#1a1a1a;background:#fafafa}
@@ -214,7 +319,10 @@ def render_html(data) -> str:
     parts += [f"<li>{esc(n)}</li>" for n in _notes(data)]
     parts.append("</ul>")
     for title, headers, rows in _sections(data):
-        parts.append(f"<h2>{esc(title)}</h2><table><tr>")
+        parts.append(f"<h2>{esc(title)}</h2>")
+        if title.startswith("Coverage curve"):
+            parts.append(_coverage_curve_svg(data))
+        parts.append("<table><tr>")
         parts += [f"<th>{esc(h)}</th>" for h in headers]
         parts.append("</tr>")
         for row in rows:
