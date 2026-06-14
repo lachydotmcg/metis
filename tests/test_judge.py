@@ -143,6 +143,39 @@ def test_dotenv_loader_sets_missing_env_only():
         os.environ.pop("METIS_EXISTING_KEY", None)
 
 
+def test_extract_json_ignores_prose_braces():
+    # A judge that emits reasoning with braces before the verdict must not crash
+    # the parse (the old greedy \{.*\} grabbed from the first brace to the last).
+    text = ('Let me think {about this carefully}. The candidate is clearer.\n'
+            '{"score_a": 0.8, "score_b": 0.6, "winner": "A"}')
+    d = J._extract_json(text)
+    assert d["score_a"] == 0.8 and d["score_b"] == 0.6 and d["winner"] == "a"
+
+
+def test_extract_json_picks_last_valid_object():
+    text = ('{"score_a": 0.1, "score_b": 0.1, "winner": "tie"} then revised: '
+            '{"score_a": 0.9, "score_b": 0.2, "winner": "A"}')
+    d = J._extract_json(text)
+    assert d["score_a"] == 0.9  # the final verdict wins
+
+
+def test_extract_json_unparseable_raises():
+    try:
+        J._extract_json("no json here at all")
+        raise AssertionError("expected ValueError")
+    except ValueError:
+        pass
+
+
+def test_unsupported_param_error_detection():
+    from metis.backends.cloud import _is_unsupported_param_error as f
+    assert f("HTTP 400: Unsupported value: 'temperature' is not supported")
+    assert f("HTTP 400: 'seed' is not supported with this model")
+    assert not f("HTTP 400: model not found")          # 400 but no param
+    assert not f("ConnectionError: timed out")          # param-free error
+    assert not f("")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

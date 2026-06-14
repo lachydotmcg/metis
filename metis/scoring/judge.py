@@ -63,11 +63,40 @@ def _read_config(config_path: pathlib.Path) -> tuple[dict, str, str]:
     return cfg, rubric, digest
 
 
+def _last_json_object(text: str) -> dict | None:
+    """Last well-formed top-level {...} object in text, or None.
+
+    A greedy `\\{.*\\}` grabs from the first brace anywhere (e.g. in the judge's
+    prose reasoning) to the last, which then fails to parse and — without this —
+    aborts the whole judge pass. Brace-balanced scanning picks the final verdict
+    object instead.
+    """
+    candidates = []
+    depth = 0
+    start = -1
+    for i, ch in enumerate(text):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}" and depth > 0:
+            depth -= 1
+            if depth == 0 and start != -1:
+                candidates.append(text[start:i + 1])
+    for chunk in reversed(candidates):
+        try:
+            obj = json.loads(chunk)
+        except Exception:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    return None
+
+
 def _extract_json(text: str) -> dict:
-    match = re.search(r"\{.*\}", text or "", re.DOTALL)
-    if not match:
-        raise ValueError("judge returned no JSON object")
-    data = json.loads(match.group(0))
+    data = _last_json_object(text or "")
+    if data is None:
+        raise ValueError("judge returned no parseable JSON object")
     for key in ("score_a", "score_b"):
         val = data.get(key)
         if not isinstance(val, (int, float)) or isinstance(val, bool):
@@ -218,7 +247,7 @@ def judge_run(run_dir, config_path="config/judge.yaml") -> dict:
     }
 
     rows = []
-    judged = skipped_errors = 0
+    judged = skipped_errors = judge_errors = 0
     missing_tier1 = []
     for rec in records:
         key = (rec["task_id"], rec["model"]["name"], int(rec["repeat"]))
@@ -238,8 +267,27 @@ def judge_run(run_dir, config_path="config/judge.yaml") -> dict:
         if task is None:
             raise SystemExit(f"unknown task in records: {rec['task_id']}")
         candidate = (rec.get("output") or {}).get("content", "")
-        score, details = _score_pair(
-            backend, model, task, rubric, candidate, max_tokens, temperature)
+        try:
+            score, details = _score_pair(
+                backend, model, task, rubric, candidate, max_tokens, temperature)
+        except Exception as e:
+            # One judge failure must not abort the whole pass. Record a
+            # null-score row so the report falls back to this row's tier-1 score.
+            rows.append({
+                "schema_version": SCHEMA_VERSION,
+                "task_id": rec["task_id"],
+                "category": rec["category"],
+                "model": rec["model"]["name"],
+                "repeat": rec["repeat"],
+                "score": None,
+                "needs_judge": True,
+                "judge_applied": False,
+                "judge": judge_meta,
+                "details": {"tier1_score": tier1.get("score"),
+                            "judge_error": f"{type(e).__name__}: {e}"},
+            })
+            judge_errors += 1
+            continue
         row = {
             "schema_version": SCHEMA_VERSION,
             "task_id": rec["task_id"],
@@ -266,6 +314,7 @@ def judge_run(run_dir, config_path="config/judge.yaml") -> dict:
         "judge_rows": len(rows),
         "api_judged": judged,
         "generation_errors_scored_zero": skipped_errors,
+        "judge_failures_fell_back_to_tier1": judge_errors,
         "missing_tier1_scores": [list(k) for k in missing_tier1],
         "out": str(out_path),
     }

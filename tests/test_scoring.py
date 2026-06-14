@@ -27,6 +27,20 @@ def test_numeric():
     assert s == 0.0
 
 
+def test_number_comma_parsing():
+    # Thousands separators in groups of 3 parse whole; stray commas do not merge.
+    assert P.extract_number("Answer: 85,005") == 85005.0
+    assert P.extract_number("Answer: 12,400,000") == 12400000.0
+    assert P.extract_number("Answer: 1,234.5") == 1234.5
+    assert P.extract_number("Answer: 42") == 42.0
+    # "1,2" is NOT a thousands group: must not become 12. Fallback takes the last
+    # number, which is 2.
+    assert P.extract_number("the pair is 1,2") == 2.0
+    # Scoring end-to-end: a comma-grouped expected value matches.
+    s, _ = P.score_numeric_exact("Answer: 85,005", {"expected": 85005})
+    assert s == 1.0
+
+
 def test_choice():
     spec = {"expected": "Cal", "options": ["Ari", "Bec", "Cal"]}
     assert P.score_choice_exact("Answer: Cal.", spec)[0] == 1.0

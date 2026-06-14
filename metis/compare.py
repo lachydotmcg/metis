@@ -158,6 +158,10 @@ def compare(local_run: str, cloud_run: str, out_dir: str) -> pathlib.Path:
     _coverage_svg(models, out / "coverage_curve.svg")
     _quality_speed_svg(models, out / "quality_vs_speed.svg")
 
+    # Pick headline models by computed metric, not list position — the model set
+    # and order vary by run, so rows[0]/rows[1] would mislabel or IndexError.
+    strongest = max(rows, key=lambda r: r["relative_to_cloud_mean"]) if rows else None
+    fastest = max(rows, key=lambda r: r["decode_tps"]) if rows else None
     lines = [
         "# Metis Findings Draft",
         "",
@@ -165,8 +169,19 @@ def compare(local_run: str, cloud_run: str, out_dir: str) -> pathlib.Path:
         "",
         "## Headline",
         "",
-        f"`qwen3:8b` is the strongest local model: {rows[1]['relative_to_cloud_mean']:.0%} of Claude's mean per-task quality and {rows[1]['anchored_coverage_90pct_cloud']:.0%} of tasks at at least 90% of Claude's task score.",
-        f"`qwen3:1.7b` is the speed play: {rows[0]['decode_tps']:.1f} tok/s and {rows[0]['anchored_coverage_90pct_cloud']:.0%} anchored coverage at the same 90%-of-Claude bar.",
+    ]
+    if strongest:
+        lines.append(
+            f"`{strongest['model']}` is the strongest local model: "
+            f"{strongest['relative_to_cloud_mean']:.0%} of {cloud_name}'s mean "
+            f"per-task quality and {strongest['anchored_coverage_90pct_cloud']:.0%} "
+            f"of tasks at at least 90% of {cloud_name}'s task score.")
+    if fastest and (strongest is None or fastest["model"] != strongest["model"]):
+        lines.append(
+            f"`{fastest['model']}` is the speed play: {fastest['decode_tps']:.1f} "
+            f"tok/s and {fastest['anchored_coverage_90pct_cloud']:.0%} anchored "
+            f"coverage at the same 90%-of-{cloud_name} bar.")
+    lines += [
         "",
         "## Charts",
         "",

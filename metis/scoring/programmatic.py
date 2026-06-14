@@ -14,7 +14,10 @@ from pathlib import Path
 
 THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 ANSWER_RE = re.compile(r"(?i)\banswer\s*[:\-]\s*(.+)")
-NUM_RE = re.compile(r"-?\$?\d[\d,]*(?:\.\d+)?")
+# Commas count as thousands separators ONLY in groups of three (grouped
+# alternative first so "12,400,000" matches whole, not just "12"). Without
+# this, "1,2" mis-parsed to 12.0 and could silently mis-score a numeric answer.
+NUM_RE = re.compile(r"-?\$?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\$?\d+(?:\.\d+)?")
 CODE_BLOCK_RE = re.compile(r"```(?:python|py)?\s*\n(.*?)```", re.DOTALL)
 _WORD_RE = re.compile(r"[A-Za-z0-9']+")
 

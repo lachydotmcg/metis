@@ -11,8 +11,8 @@ Every line in records.jsonl is one generation:
                temp_max_c, gpu_util_avg, ram_peak_mb, ram_avg_mb, cpu_avg_pct,
                energy_j, duration_s, gpu_source}
     output:   {content, thinking}
-    agentic:  null | {success, steps, max_steps, tool_calls, invalid_turns,
-                      recovered, final_answer, transcript}
+    agentic:  null | {final_answer, steps_used, max_steps, tool_calls,
+                      valid_json_turns, invalid_turns, error_injected, transcript}
     error:    null | str
 
 Bump rules: additive field = patch, rename/retype = minor, restructure = major.

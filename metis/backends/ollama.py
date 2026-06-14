@@ -30,12 +30,17 @@ class OllamaBackend(Backend):
         self.s = requests.Session()
 
     def version(self) -> str:
-        try:
-            r = self.s.get(f"{self.base}/api/version", timeout=10)
-            return r.json().get("version", "?")
-        except Exception as e:
-            raise SystemExit(
-                f"Cannot reach Ollama at {self.base} ({e}). Is it running?")
+        # Retry once: a single transient blip at preflight shouldn't abort a
+        # multi-hour run. Only SystemExit after both attempts fail.
+        last = None
+        for _ in range(2):
+            try:
+                r = self.s.get(f"{self.base}/api/version", timeout=10)
+                return r.json().get("version", "?")
+            except Exception as e:
+                last = e
+        raise SystemExit(
+            f"Cannot reach Ollama at {self.base} ({last}). Is it running?")
 
     def model_info(self, model: str) -> dict:
         info: dict = {"name": model}

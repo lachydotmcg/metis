@@ -29,6 +29,20 @@ DEFAULTS = {
 _OPENAI_OPTS = ("temperature", "seed")
 
 
+def _is_unsupported_param_error(msg: str) -> bool:
+    """True when a cloud error looks like 'this model rejects temperature/seed'
+    (some reasoning models 400 on sampling params). Requires BOTH a param
+    mention and an unsupported/400 signal, so unrelated errors don't trigger a
+    pointless retry."""
+    m = (msg or "").lower()
+    mentions_param = any(p in m for p in
+                         ("temperature", "seed", "top_p", "top_k"))
+    looks_unsupported = any(s in m for s in
+                            ("unsupported", "not supported", "does not support",
+                             "400", "bad request"))
+    return mentions_param and looks_unsupported
+
+
 def load_dotenv(path: str | pathlib.Path = ".env") -> None:
     env_path = pathlib.Path(path)
     if not env_path.exists():
@@ -129,6 +143,16 @@ class CloudBackend(Backend):
             "Authorization": f"Bearer {self._api_key()}",
             "Content-Type": "application/json",
         }
+        res = self._post_openai_stream(body, headers)
+        # Some reasoning models reject sampling params (temperature/seed) with a
+        # 400. Retry once without them rather than failing the whole generation.
+        if res.error and _is_unsupported_param_error(res.error):
+            stripped = {k: v for k, v in body.items() if k not in _OPENAI_OPTS}
+            if stripped != body:
+                res = self._post_openai_stream(stripped, headers)
+        return res
+
+    def _post_openai_stream(self, body: dict, headers: dict) -> GenResult:
         res = GenResult()
         t0 = time.perf_counter()
         first: float | None = None
@@ -136,7 +160,12 @@ class CloudBackend(Backend):
             with self.s.post(f"{self.base_url}/chat/completions", json=body,
                              headers=headers, stream=True,
                              timeout=self.timeout) as r:
-                r.raise_for_status()
+                if r.status_code >= 400:
+                    # Capture the body so the caller can detect unsupported-param
+                    # errors; requests' HTTPError message omits it.
+                    res.error = f"HTTP {r.status_code}: {(r.text or '')[:500]}"
+                    res.wall_s = time.perf_counter() - t0
+                    return res
                 for raw in r.iter_lines(decode_unicode=True):
                     if not raw:
                         continue
