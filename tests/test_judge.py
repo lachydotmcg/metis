@@ -7,8 +7,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from metis.backends import get_backend
 from metis.backends.base import GenResult
 from metis.backends.cloud import CloudBackend, load_dotenv
+from metis.backends.llamacpp import LlamaCppBackend, build_body, consume_stream
 from metis.report import aggregate
 from metis.scoring import judge as J
 
@@ -125,6 +127,122 @@ def test_cloud_backend_missing_key_is_generation_error():
         {"num_predict": 1},
     )
     assert res.error and "METIS_NO_SUCH_KEY" in res.error
+
+
+def test_llamacpp_registered_and_records_gpu_layers():
+    be = get_backend("llamacpp", base_url="http://localhost:8080/",
+                     n_gpu_layers=20)
+    assert isinstance(be, LlamaCppBackend)
+    assert be.base == "http://localhost:8080"  # trailing slash stripped
+    # settings() records the launch-time knob even with no server reachable.
+    s = be.settings()
+    assert s["base_url"] == "http://localhost:8080"
+    assert s["n_gpu_layers"] == 20
+    mi = be.model_info("qwen3-8b.gguf")
+    assert mi["family"] == "llama.cpp" and mi["n_gpu_layers"] == 20
+
+
+def test_llamacpp_build_body_maps_knobs():
+    body = build_body("m", [{"role": "user", "content": "hi"}],
+                      {"num_predict": 64, "temperature": 0.0, "seed": 7})
+    assert body["model"] == "m"
+    assert body["stream"] is True
+    assert body["stream_options"] == {"include_usage": True}
+    assert body["max_tokens"] == 64
+    assert body["temperature"] == 0.0 and body["seed"] == 7
+    # Knobs that weren't supplied must not appear.
+    body2 = build_body("m", [], {})
+    assert "max_tokens" not in body2 and "temperature" not in body2
+
+
+def test_llamacpp_consume_stream_parses_content_and_timings():
+    # An OpenAI-style SSE with llama.cpp's timings block in the final chunk.
+    lines = [
+        'data: {"choices":[{"delta":{"content":"Hel"}}]}',
+        'data: {"choices":[{"delta":{"content":"lo"}}]}',
+        '',  # blank lines are skipped
+        'data: {"choices":[{"delta":{}}],'
+        '"usage":{"prompt_tokens":11,"completion_tokens":2},'
+        '"timings":{"prompt_ms":500.0,"predicted_ms":2000.0,'
+        '"prompt_n":11,"predicted_n":2}}',
+        'data: [DONE]',
+    ]
+    res = GenResult()
+    first = consume_stream(iter(lines), res)
+    assert res.content == "Hello"
+    assert res.prompt_tokens == 11 and res.output_tokens == 2
+    assert res.prompt_eval_s == 0.5 and res.eval_s == 2.0
+    assert first is not None  # a content token was seen
+
+
+def test_llamacpp_chat_end_to_end_with_fake_session():
+    # Drive chat() fully offline through a fake requests session, exercising
+    # body-build -> POST -> stream-parse -> timing finalisation.
+    class _FakeResp:
+        def __init__(self, lines):
+            self._lines = lines
+            self.status_code = 200
+            self.text = ""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def iter_lines(self, decode_unicode=False):
+            return iter(self._lines)
+
+    class _FakeSession:
+        def __init__(self, lines):
+            self._lines = lines
+            self.last = None
+
+        def post(self, url, json=None, stream=None, timeout=None):
+            self.last = {"url": url, "json": json}
+            return _FakeResp(self._lines)
+
+    lines = [
+        'data: {"choices":[{"delta":{"content":"4"}}]}',
+        'data: {"choices":[{"delta":{}}],'
+        '"usage":{"prompt_tokens":5,"completion_tokens":1},'
+        '"timings":{"predicted_ms":1000.0,"predicted_n":1}}',
+        'data: [DONE]',
+    ]
+    be = LlamaCppBackend(n_gpu_layers=33)
+    be.s = _FakeSession(lines)
+    res = be.chat("m", [{"role": "user", "content": "2+2?"}],
+                  {"num_predict": 16, "temperature": 0.0})
+    assert res.error is None
+    assert res.content == "4"
+    assert res.output_tokens == 1 and res.eval_s == 1.0
+    # The request hit the OpenAI-compatible path with the mapped body.
+    assert be.s.last["url"].endswith("/v1/chat/completions")
+    assert be.s.last["json"]["max_tokens"] == 16
+
+
+def test_llamacpp_chat_http_error_is_recorded_not_raised():
+    class _FakeResp:
+        status_code = 503
+        text = "model loading"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def iter_lines(self, decode_unicode=False):
+            return iter([])
+
+    class _FakeSession:
+        def post(self, *a, **k):
+            return _FakeResp()
+
+    be = LlamaCppBackend()
+    be.s = _FakeSession()
+    res = be.chat("m", [{"role": "user", "content": "x"}], {})
+    assert res.error and "503" in res.error
 
 
 def test_dotenv_loader_sets_missing_env_only():

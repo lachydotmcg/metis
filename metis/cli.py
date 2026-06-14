@@ -20,7 +20,7 @@ def main(argv=None):
     rp.add_argument("--models", required=True,
                     help="comma-separated model names, e.g. qwen3:1.7b,qwen3:8b")
     rp.add_argument("--backend", default="ollama",
-                    choices=["ollama", "mock", "cloud"])
+                    choices=["ollama", "mock", "cloud", "llamacpp"])
     rp.add_argument("--repeats", type=int, default=3)
     rp.add_argument("--suite", default="v1")
     rp.add_argument("--include", default=None,
@@ -44,6 +44,11 @@ def main(argv=None):
                     help="environment variable containing the cloud API key")
     rp.add_argument("--cloud-api-version", default=None,
                     help="provider API version, when required")
+    rp.add_argument("--llamacpp-base-url", default="http://localhost:8080",
+                    help="llama-server base URL (llamacpp backend)")
+    rp.add_argument("--llamacpp-gpu-layers", type=int, default=None,
+                    help="n_gpu_layers the llama-server was launched with "
+                         "(recorded into run metadata, not enforced)")
     rp.add_argument("--out", default="results")
     rp.add_argument("--force", action="store_true",
                     help="skip the preflight quiesce check (recorded)")
@@ -103,6 +108,12 @@ def main(argv=None):
                 "base_url": args.cloud_base_url,
                 "api_key_env": args.cloud_api_key_env,
                 "api_version": args.cloud_api_version,
+                "timeout_s": args.timeout,
+            }
+        elif args.backend == "llamacpp":
+            backend_kwargs = {
+                "base_url": args.llamacpp_base_url,
+                "n_gpu_layers": args.llamacpp_gpu_layers,
                 "timeout_s": args.timeout,
             }
         run(models=[m.strip() for m in args.models.split(",") if m.strip()],
