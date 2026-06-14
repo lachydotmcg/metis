@@ -49,7 +49,7 @@ The secondary question that emerges from the routing framing:
    an LLM-as-judge tier for subjective tasks), and reports anchored coverage curves
    and routing economics. Code and versioned suite at `github.com/lachydotmcg/metis`.
 
-2. **A three-model 8 GB frontier study** on a single RTX 3060 8 GB machine:
+2. **A three-model 8 GB local-coverage study** on a single RTX 3060 8 GB machine:
    qwen3:8b, qwen3:1.7b, and deepseek-r1:7b against a Claude Sonnet 4.6 cloud
    reference, N=5, 315 local generations, zero errors.
 
@@ -186,8 +186,11 @@ N=5, 315 generations, 0 errors). Cloud reference: `results/20260612_201339`
 local decode rate.
 
 qwen3:8b reaches 87% of Claude's mean task quality on this suite, with 81% of tasks
-clearing a 90%-of-Claude bar. This is a much closer result than the 4× parameter
-count difference would naively suggest.
+clearing a 90%-of-Claude bar. This is a local-coverage result inside a bounded task
+suite, not a general capability ratio. Claude Sonnet 4.6 is near the Metis v1
+ceiling; a stronger frontier model could also score 100% without being equivalent
+to Sonnet. The correct interpretation is that qwen3:8b covers a large fraction of
+the current suite envelope, not that it is only 13% below Claude in intelligence.
 
 #### 3.2.2 Per-category breakdown
 
@@ -199,11 +202,12 @@ count difference would naively suggest.
 | reasoning | **1.00** | **1.00** | **1.00** | 0.80 |
 | summarisation | 0.90 | **0.94** | 0.81 | 0.69 |
 
-The clearest local wins are in reasoning and summarisation. On reasoning, all three
-evaluated models achieve 0.80–1.00 (small suite caveat: 5 tasks). On summarisation,
-qwen3:8b scores *above* Claude Sonnet 4.6 (0.94 vs 0.90) — a category-level local
-superiority that becomes the basis for the summarisation routing claim in §3.4.
-Coding is the clear local weakness: qwen3:8b at 0.60 vs Claude at 1.00.
+The clearest local strengths in v1 are reasoning and summarisation. On reasoning,
+all three evaluated models achieve 0.80-1.00 (small suite caveat: 5 tasks). On
+summarisation, qwen3:8b scores above Claude Sonnet 4.6 in the current judged rows
+(0.94 vs 0.90), which supports a routing claim for this suite but not a broad claim
+of summarisation superiority. Coding is the clear local weakness: qwen3:8b at
+0.60 vs Claude at 1.00.
 
 #### 3.2.3 Coverage curve
 
@@ -235,9 +239,10 @@ calls. Runs: `results/step_depth_local/20260612_203254` (local) and
 
 The step-depth cliff is a qualitative boundary, not a gradient. qwen3:1.7b and
 deepseek-r1:7b handle a single lookup then break immediately when the task requires
-chaining two tool calls. qwen3:8b matches Claude Sonnet 4.6 through depth 5. This
-puts qwen3:8b as the first local tier where multi-step tool use is reliably possible
-on this hardware. 
+chaining two tool calls. qwen3:8b and Claude Sonnet 4.6 both reach the measured
+ceiling through depth 5. This puts qwen3:8b as the first local tier where
+multi-step tool use is reliably possible on this hardware, while leaving open where
+it diverges from stronger models on deeper or more adversarial ladders.
 
 **Caveat:** the v2 ladder is four tasks. This is a directional signal, not a
 statistically powered measurement. The cliff is sharp enough to be credible but the
@@ -435,10 +440,11 @@ to the authors.
 
 The headline finding is not "8 GB is good enough." It is more precisely:
 
-1. **A 8 B parameter model on an 8 GB card can match or exceed a frontier cloud
-   API on a subset of the workload.** On reasoning, qwen3:8b scores 1.00 vs
-   Claude Sonnet 4.6's 1.00. On summarisation, it scores 0.94 vs 0.90. These are
-   not close calls; they are category-level local wins.
+1. **An 8 B parameter model on an 8 GB card can reach the measured suite ceiling
+   on a subset of the workload.** On reasoning, qwen3:8b scores 1.00 vs Claude
+   Sonnet 4.6's 1.00. On summarisation, it scores 0.94 vs 0.90 in the judged v1
+   rows. These are category-level local wins within this suite, not evidence that
+   qwen3:8b and Claude have equal latent capability.
 
 2. **The routing signal is strong and cheap to compute.** A keyword classifier with
    no ML model achieves perfect category prediction on the v1 suite, and the

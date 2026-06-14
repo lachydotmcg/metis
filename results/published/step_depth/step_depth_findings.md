@@ -13,6 +13,6 @@ Local run: `20260612_203254`. Cloud run: `20260612_210103`.
 
 ## Finding
 
-`qwen3:1.7b` and `deepseek-r1:7b` both solve the one-lookup task but fall below the 90% success bar at depth 2. `qwen3:8b` matches Claude through depth 5 on this ladder.
+`qwen3:1.7b` and `deepseek-r1:7b` both solve the one-lookup task but fall below the 90% success bar at depth 2. `qwen3:8b` and Claude both reach the measured ceiling through depth 5 on this ladder.
 
-This is the first crisp degradation result: for this protocol, the local 8B model is not merely better on average; it crosses a qualitative boundary where multi-step tool use becomes reliable.
+This is the first crisp degradation result: for this protocol, the local 8B model crosses a qualitative boundary where multi-step tool use becomes reliable. It does not show where qwen3:8b and stronger cloud models diverge beyond depth 5.

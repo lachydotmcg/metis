@@ -22,9 +22,12 @@ v0.1.1 — headless engine working end to end (run → score → judge → repor
 
 On a single **RTX 3060 8 GB** machine (AMD Ryzen 5 5500, 31.9 GB RAM):
 
-**qwen3:8b reaches 87% of Claude Sonnet 4.6's mean per-task quality**, clearing a
-90%-of-Claude bar on 81% of tasks. On reasoning and summarisation it matches or
-exceeds Claude; coding remains the local weak point (0.60 vs 1.00).
+**qwen3:8b reaches 87% of Claude Sonnet 4.6's mean per-task quality on Metis v1**,
+clearing a 90%-of-Claude bar on 81% of tasks. This is a suite-coverage result,
+not an intelligence-ratio claim: Claude is near the v1 ceiling, so stronger cloud
+models could also score ~100% without being equivalent. Within this suite,
+reasoning and summarisation are local strengths; coding remains the local weak
+point (0.60 vs 1.00).
 
 A per-category routing policy (local for reasoning, summarisation, agentic, and
 instruction-following; cloud for coding) keeps **100.4% of all-cloud task success
@@ -33,8 +36,9 @@ routing on prompt text alone reproduces the oracle routing with **100% accuracy*
 the v1 suite and zero backend flips.
 
 The agentic step-depth ladder is the starkest finding: qwen3:1.7b and deepseek-r1:7b
-handle a single tool-call, then break completely at depth 2. **qwen3:8b matches Claude
-through depth 5** — the first local tier where multi-step tool use is reliable.
+handle a single tool-call, then break completely at depth 2. **qwen3:8b reaches the
+same measured ceiling as Claude through depth 5** - the first local tier where
+multi-step tool use is reliable on this protocol.
 
 Context length has its own cliff: qwen3:8b decodes near 40 tok/s out to 8k context,
 then **drops to ~10 tok/s at 16k with no error** — the KV cache spilling 8 GB of VRAM

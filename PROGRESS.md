@@ -1,5 +1,54 @@
 # Progress Log
 
+## 2026-06-14 (hardening pass) - audit fixes, saturation metric, future-eval plan
+
+Quality pass, no new model runs. Published the repo to `github.com/lachydotmcg/metis`.
+
+Ran a full read-only code audit (subagent) and fixed the real findings, prioritising
+the two that could silently corrupt published numbers:
+- Judge JSON extraction (greedy regex -> brace-balanced + per-row fallback so one bad
+  judge response can't abort the pass).
+- Numeric parsing comma bug ("1,2" -> 12.0) -> commas only group in threes.
+- `compare.py` positional model indexing -> pick by metric.
+- Cloud backend retry-without-sampling-params on 400; Ollama `version()` retry.
+- `schema.py` agentic docstring corrected to the real keys.
+
+Added a saturation metric (`metis/saturation.py` + `metis saturation`) that makes the
+ceiling effect a reproducible number rather than a prose caveat (Claude run: mean
+0.976, 86% tasks at ceiling, `reference_saturated: true`), wired into FINDINGS.
+
+Added `docs/FUTURE_EVALUATIONS.md` so future runs are deliberate and budget-aware.
+
+All 40 test groups + the router and context_scale selftests pass. What Lachy should
+look at first: `docs/FUTURE_EVALUATIONS.md` (what to run next) and `metis saturation
+results/20260612_201339` (the ceiling, measured).
+
+## 2026-06-14 (framing correction) - saturation caveat applied
+
+Updated the public-facing result language after Lachy flagged the core issue:
+Claude Sonnet 4.6 is near the Metis v1 ceiling, so qwen3:8b's 87% anchored score
+must not read as "only 13% below Claude's intelligence." Patched README,
+`docs/FINDINGS.md`, `docs/PAPER.md`, `results/published/README.md`,
+`results/published/comparison_local_vs_claude/findings.md`, and
+`results/published/step_depth/step_depth_findings.md` to frame the result as
+suite coverage and to call out frontier headroom separately. No measured numbers
+changed.
+
+## 2026-06-14 (handoff planning) - frontier headroom next
+
+Created `docs/NEXT_AGENT_PLAN.md` as the current authoritative plan for the next
+agent. The plan centers the newly identified ceiling-effect problem: Claude Sonnet
+4.6 nearly saturates Metis v1, so qwen3:8b's score should be framed as practical
+suite coverage rather than a general intelligence ratio. It also records the
+constraint that Lachy may need to wait for Claude subscription usage to reset and
+that no Anthropic API credits should be spent without explicit approval.
+
+Updated `HANDOFF.md` so future agents do not follow the completed judge/cloud/full
+study tasks, refreshed `docs/ROADMAP.md` with frontier headroom as the next
+priority, and added a changelog entry. No experiments or tests were run; this was
+a docs-only planning change. `git diff --check` passed with only line-ending
+warnings.
+
 ## 2026-06-14 (overnight, 08:02 AEST) — verification run #6
 
 Re-invoked overnight with OVERNIGHT_PLAN.md tasks 1–6 already complete and pushed

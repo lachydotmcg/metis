@@ -19,16 +19,17 @@ Raw model outputs (`records.jsonl`) are excluded — regenerate them with `metis
 ### Comparison: local vs Claude Sonnet 4.6
 
 - **`comparison_local_vs_claude/findings.md`** — anchored quality comparison:
-  qwen3:8b reaches 87% of Claude's mean per-task quality; 81% of tasks clear the
-  90%-of-Claude bar.
+  qwen3:8b reaches 87% of Claude's mean per-task quality on Metis v1; 81% of tasks
+  clear the 90%-of-Claude bar. Claude is near the v1 ceiling, so this is a
+  coverage claim, not a general intelligence-ratio claim.
 - **`comparison_local_vs_claude/comparison.json`** — raw comparison data (per-model
   metrics, coverage at threshold, per-category breakdown).
 
 ### Step-Depth Degradation
 
 - **`step_depth/step_depth_findings.md`** — four-task agentic ladder result.
-  qwen3:1.7b and deepseek-r1:7b break at depth 2; qwen3:8b matches Claude through
-  depth 5.
+  qwen3:1.7b and deepseek-r1:7b break at depth 2; qwen3:8b and Claude both reach
+  the measured ceiling through depth 5.
 - **`step_depth/step_depth.json`** — raw step-depth data.
 
 ### Context-Length Scaling (qwen3:8b)
