@@ -1,5 +1,25 @@
 # Progress Log
 
+## 2026-06-15 (overnight, ~03:0x AEST) — integrity re-verification (no new work)
+
+Re-invoked overnight with all six OVERNIGHT_PLAN v2 tasks already complete and
+pushed (`48e955b`). The committed plan has no remaining numbered tasks, and my
+authority is bounded strictly by it, so I did **not** improvise work outside the
+plan. This run re-verified integrity only:
+
+- Git: working tree clean; local HEAD `48e955b` == `origin/main`.
+- Full mandated gate green: `test_scoring` (12), `test_judge` (14),
+  `test_memory_retrieval` (4), `test_judge_agreement` (9), `test_saturation` (6),
+  `router --selftest`, `context_scale --selftest`.
+- New-mode tests also green: `test_v3_suite` (6), `offload_sweep --selftest`,
+  `realistic_conditions --selftest`.
+- Ollama unreachable (`/api/tags`, exit 7), so the GPU-gated runs (v3 reference
+  smoke, offload sweep, realistic conditions) remain correctly deferred.
+
+What Lachy should look at first: nothing changed since the v2 wrap-up — the three
+GPU-gated modes are still code-complete and waiting on an idle/approved GPU, and
+suite v3 is ready for a reference smoke. See the v2 entry below for detail.
+
 ## 2026-06-15 (overnight, 02:0x–02:33 AEST) — OVERNIGHT_PLAN v2 tasks 1–6 complete
 
 Worked the refreshed v2 plan (the earlier PROGRESS notes about "tasks 1–6
