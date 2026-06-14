@@ -58,25 +58,30 @@ Build order follows the principle: methodology first, GUI last. Status as of
 
 ## Next (priority order)
 
-1. [~] **Frontier headroom / saturation handling** - ceiling-effect language
+1. [x] **Frontier headroom / saturation handling** - ceiling-effect language
    (DONE: FINDINGS/PAPER/README) and a derived saturation metric (DONE:
    `metis/saturation.py` + `metis saturation`; Claude run flagged
-   `reference_saturated: true`) are in. REMAINING: design harder tasks in a new
-   suite version (`metis/suite/v3/`) to restore frontier headroom. See
-   `docs/NEXT_AGENT_PLAN.md` and `docs/FUTURE_EVALUATIONS.md` E1.
+   `reference_saturated: true`). Frozen frontier-headroom suite DONE:
+   `metis/suite/v3/` (18 tasks, 5 categories, all programmatic, self-validating
+   via `tests/test_v3_suite.py`); see `docs/FRONTIER_HEADROOM.md`. REMAINING: the
+   reference-smoke validation run (`docs/FUTURE_EVALUATIONS.md` E1, credit-gated).
 2. [ ] **Judge validation set** - collect the roughly 50 human-labeled items and
    report judge-human agreement before paper use. Scaffolding landed:
    `validation/extract_labels.py`, `validation/agreement.py`, and tests; waiting
    on human labels.
-3. [ ] **llama.cpp server backend** - needed for controlled `n_gpu_layers`
-   sweeps.
-4. [ ] **Offload-cliff sweep mode** - automate runs across `num_gpu` values and
-   plot tok/s vs layers.
-5. [ ] **WDDM silent-spill detection** - shared-GPU-memory sampling plus
-   perf-cliff heuristic, flagged in reports. The spill is now empirically
-   observed in the 16k context cliff, but automatic in-report detection is still
-   unbuilt.
-6. [ ] **Realistic-conditions mode** - synthetic RAM pressure during runs.
+3. [x] **llama.cpp server backend** - `metis/backends/llamacpp.py`
+   (`--backend llamacpp`); OpenAI-compatible, records `n_gpu_layers` and parses
+   llama.cpp `timings`. Mock-tested in `tests/test_judge.py`.
+4. [x] **Offload-cliff sweep mode** - `offload_sweep.py`: sweeps GPU-layer counts
+   (Ollama `num_gpu` or pre-launched llama-servers), reports tok/s vs layers and
+   the offload knee. Mock-tested (`--selftest`); real sweep GPU-gated.
+5. [x] **WDDM silent-spill detection** - `context_scale.detect_silent_spill`
+   flags a fits-but-crawls decode collapse (>=50% one-step drop, zero errors) and
+   surfaces `silent_spill: true` in the report; the published 16k cliff now
+   carries the flag. Eval-free, tested with synthetic samples.
+6. [x] **Realistic-conditions mode** - `realistic_conditions.py`: safety-capped
+   synthetic RAM pressure, clean-vs-loaded delta report. Mock-tested
+   (`--selftest`); real run GPU-gated.
 7. [ ] **Tauri viewer** - read-only over run artifacts. Deliberately last.
 
 ## Rules That Survive Any Roadmap Change

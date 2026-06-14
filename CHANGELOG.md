@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-06-15 (overnight — OVERNIGHT_PLAN v2 tasks 1–6)
+
+- **Frontier-headroom suite v3** (`metis/suite/v3/`, frozen): 18 harder,
+  contamination-safe tasks across 5 categories (coding with hidden edge tests,
+  deeper agentic with branching/recovery, long-context distant-fact, adversarial
+  summarisation with conflicting claims, interacting instruction constraints).
+  All programmatically scored (no judge dependency), selectable via `--suite v3`.
+  `tests/test_v3_suite.py` scores every reference answer with the real scorers
+  (1.0 required); design doc `docs/FRONTIER_HEADROOM.md`.
+- **Automatic WDDM silent-spill detection** — `context_scale.detect_silent_spill`
+  flags a fits-but-crawls decode collapse (≥50% one-step drop with zero errors)
+  and the report now carries `silent_spill: true|false`. Eval-free; the published
+  qwen3:8b 16k cliff was regenerated to carry the flag. Synthetic-sample tests.
+- **Router OOD robustness** — `python router.py ood` classifies 22 hand-written
+  out-of-distribution prompts (no model calls): accuracy 100% → 40.9%, fail-safe
+  catches 12/13 misclassifications, 22.7% silent-misroute exposure. Replaced the
+  prose "best-case caveat" in FINDINGS with the measured table; published
+  `results/published/router_ood/report.md`.
+- **llama.cpp server backend** (`metis/backends/llamacpp.py`, `--backend
+  llamacpp`) — OpenAI-compatible, records `n_gpu_layers`, parses llama.cpp
+  `timings`. Five mock tests (request/parse path) in `tests/test_judge.py`.
+- **Offload-cliff sweep** (`offload_sweep.py`) — tok/s vs GPU layers via Ollama
+  `num_gpu` or pre-launched llama-servers, with offload-knee detection. Mock-
+  tested (`--selftest`).
+- **Realistic-conditions mode** (`realistic_conditions.py`) — safety-capped
+  synthetic RAM pressure, clean-vs-loaded delta report. Mock-tested (`--selftest`).
+- No frontier or local models were run (Ollama unreachable; real GPU/credit runs
+  remain gated). Full mandated test gate green throughout.
+
 ## 2026-06-14 (hardening pass)
 
 - **Published to GitHub** at `github.com/lachydotmcg/metis`.

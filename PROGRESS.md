@@ -1,5 +1,66 @@
 # Progress Log
 
+## 2026-06-15 (overnight, 02:0x–02:33 AEST) — OVERNIGHT_PLAN v2 tasks 1–6 complete
+
+Worked the refreshed v2 plan (the earlier PROGRESS notes about "tasks 1–6
+complete" referred to the *old* plan; the v2 plan committed in `6a932ce` had six
+fresh tasks, none done). All six landed, one small commit each, pushed and
+remote-verified. No frontier or local models were run — Ollama was unreachable
+all session, and v3 design + every new mode is validated against mock/synthetic
+data with zero inference. `.env` confirmed unstaged before every commit.
+
+What shipped:
+1. **Suite v3 (frontier headroom)** — `9611d5f`. Frozen `metis/suite/v3/`, 18
+   programmatic, contamination-safe tasks (coding w/ hidden edge tests; deeper
+   agentic w/ branching + injected-failure recovery; long-context distant-fact;
+   adversarial summarisation w/ conflicting claims; interacting instruction
+   constraints). `tests/test_v3_suite.py` scores every oracle to 1.0. Pipeline
+   smoke on the mock backend: 18 collected, 18 scored, 0 errors, 0 pending judge.
+   Design doc `docs/FRONTIER_HEADROOM.md`.
+2. **WDDM silent-spill auto-detection** — `5abb667`. `detect_silent_spill` in
+   context_scale.py flags a fits-but-crawls collapse (≥50% one-step decode drop,
+   zero errors) and the report emits `silent_spill: true|false`. Regenerated the
+   published 16k-cliff report from its stored JSONL (no inference) so the real
+   finding carries the flag. Synthetic-sample tests in the selftest gate.
+3. **Router OOD robustness (E5)** — `482be2e`. `python router.py ood` on 22
+   hand-written OOD prompts: accuracy 100% → **40.9%**, fail-safe catches 12/13
+   misclassifications, **22.7% silent-misroute** exposure. Replaced the prose
+   best-case caveat in FINDINGS with the measured table; published
+   `results/published/router_ood/report.md`.
+4. **llama.cpp backend** — `c908add`. `metis/backends/llamacpp.py`
+   (`--backend llamacpp`), OpenAI-compatible, records `n_gpu_layers`, parses
+   llama.cpp `timings`. Five mock tests (request/parse path) in test_judge.py.
+5. **Offload-cliff sweep** — `1160d19`. `offload_sweep.py`, tok/s vs GPU layers
+   (Ollama num_gpu / pre-launched llama-servers) + offload-knee detection.
+   Mock-tested via `--selftest`.
+6. **Realistic-conditions mode (OPTIONAL)** — `a89d316`. `realistic_conditions.py`,
+   safety-capped synthetic RAM pressure + clean-vs-loaded delta report.
+   Mock-tested via `--selftest`.
+
+### Test status
+Full mandated gate green before and after every task (`test_scoring`,
+`test_judge`, `test_memory_retrieval`, `test_judge_agreement`, `test_saturation`,
+`router --selftest`, `context_scale --selftest`), plus the new
+`tests/test_v3_suite.py`, `offload_sweep --selftest`, and
+`realistic_conditions --selftest`. No commit on a failing test.
+
+### Skipped / deferred (and why)
+- No real model runs: Ollama unreachable (`/api/tags` empty) and the plan gates
+  real GPU/credit runs. The v3 reference-smoke (E1), the offload sweep, and the
+  realistic-conditions run are all teed up to run when a GPU is idle/approved.
+- Judge human-labelling (separate roadmap item) still correctly blocked on Lachy.
+
+### What Lachy should look at first
+1. **Suite v3** — `docs/FRONTIER_HEADROOM.md` and `metis/suite/v3/`. This is the
+   headroom fix: a frozen, harder suite ready for a reference smoke (E1) to prove
+   it no longer saturates. Run with `metis run --suite v3 --backend mock` to see
+   the pipeline, or gate a real reference run on credit approval.
+2. **Router OOD number** — FINDINGS "Out-of-distribution robustness": accuracy
+   falls to 40.9% on realistic phrasing; the fail-safe is load-bearing and the
+   real exposure is the 22.7% silent-misroute rate.
+3. The three new GPU-gated modes (silent-spill flag, offload sweep, realistic
+   conditions) are code-complete and mock-tested — they just need an idle GPU.
+
 ## 2026-06-14 (hardening pass) - audit fixes, saturation metric, future-eval plan
 
 Quality pass, no new model runs. Published the repo to `github.com/lachydotmcg/metis`.
