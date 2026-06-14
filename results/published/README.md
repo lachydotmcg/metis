@@ -16,6 +16,11 @@ Raw model outputs (`records.jsonl`) are excluded — regenerate them with `metis
   Keyword classifier on prompt text only. 100% accuracy on 21 v1 tasks. Threshold
   and min-confidence sweep.
 
+- **`router_ood/report.md`** — Phase 1 router robustness on 22 out-of-distribution
+  prompts (no model inference). Accuracy falls from 100% to 40.9%; the
+  min-confidence fail-safe catches 12/13 misclassifications, leaving a 22.7%
+  silent-misroute exposure (confident-and-wrong). Reproduce: `python router.py ood`.
+
 ### Comparison: local vs Claude Sonnet 4.6
 
 - **`comparison_local_vs_claude/findings.md`** — anchored quality comparison:

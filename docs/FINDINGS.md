@@ -212,13 +212,34 @@ Raising min_confidence to 0.70 triggers the low-confidence fail-safe for three t
 summarisation.changelog conf=0.62), redirecting them to cloud and costing 0.58
 quality-points but adding AUD 0.0014 vs oracle. The fail-safe is working as designed.
 
-### Honest caveat
+### Out-of-distribution robustness (measured, 2026-06-15)
 
-This is a best-case result on a small, discriminative suite. The tasks were written
-with distinctive vocabulary, so keyword rules fire cleanly. Real-world prompts that
-straddle categories or use unusual phrasing will degrade accuracy; the min-confidence
-gate is the first defence. Robustness testing on out-of-distribution prompts is the
-next step before claiming production readiness.
+The 100% above is a **best case**: the v1 prompts were written with distinctive
+vocabulary, so keyword rules fire cleanly. To measure honest degradation, 22
+hand-written out-of-distribution prompts (straddling categories or using unusual
+phrasing that avoids the discriminative keywords; no suite prompts, no model
+inference) were classified against known labels with `python router.py ood`.
+Full artifact: `results/published/router_ood/report.md`.
+
+| metric | OOD prompts | discriminative v1 |
+|---|---|---|
+| classification accuracy | **40.9%** (9/22) | 100% |
+| fail-safe rate (low-confidence → cloud) | 54.5% (12/22) | — |
+| silent-misroute rate (confident **and** wrong) | **22.7%** (5/22) | 0% |
+
+Accuracy falls from 100% to **40.9%** on realistic, non-discriminative prompts —
+the keyword classifier is brittle, as expected. The min-confidence gate is the
+load-bearing defence: it catches **12 of the 13** misclassifications (the
+confidence is 0.00 when no rule fires) and reroutes them safely to cloud at a
+small cost premium. The real exposure is the **22.7% silent-misroute rate** —
+prompts the classifier is *confident* about but gets wrong (mostly
+instruction/summary prompts misread as coding when they mention code, and a
+genuine straddle like "summarise this Python function"). Those bypass the gate.
+Per-category, reasoning is most robust (4/5, it is the zero-signal default) and
+summarisation/coding/instruction degrade most. This replaces the earlier
+"best-case caveat" with a number: the router is production-ready only behind the
+fail-safe, and only where a ~23% silent-misroute exposure on novel phrasing is
+acceptable.
 
 ## Context-Length Scaling (2026-06-14)
 

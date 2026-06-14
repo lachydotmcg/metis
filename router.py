@@ -355,6 +355,181 @@ def evaluate(local_run: str, cloud_run: str, pricing_path: str, threshold: float
     return "\n".join(lines)
 
 
+# ── Out-of-distribution robustness (FUTURE_EVALUATIONS E5) ────────────────────
+#
+# The router's 100% accuracy in `evaluate` is a BEST CASE: the v1 prompts were
+# written to be discriminative, so they carry the exact phrases the rules look
+# for. Real traffic does not. These hand-written prompts are deliberately
+# out-of-distribution — they straddle categories or use unusual phrasing that
+# avoids the discriminative keywords — so classifying them measures honest
+# degradation. No model inference is involved: this is pure classify() vs a
+# known label. `category` is the intended primary category; the comment notes
+# why each item is hard. Contamination-safe: all original, no suite prompts.
+OOD_PROMPTS: list[dict] = [
+    # reasoning — analytical, but avoiding "how many" / "what day"
+    {"category": "reasoning",
+     "prompt": "A train departs at 3:15 and travels for two and a quarter "
+               "hours. State the arrival time."},
+    {"category": "reasoning",
+     "prompt": "If every poet in the circle keeps a journal, and Dara keeps a "
+               "journal, can we conclude Dara is a poet? Justify your view."},
+    {"category": "reasoning",
+     "prompt": "Three friends split a bill so each pays twice what the previous "
+               "one did; the smallest share is $8. Determine the total."},
+    {"category": "reasoning",
+     "prompt": "Given that the 5th of the month is a Friday, identify the "
+               "weekday of the 26th of the same month."},
+    # coding — no "python function", no fenced block
+    {"category": "coding",
+     "prompt": "Implement, in any language you like, a routine that returns the "
+               "median of an array of numbers."},
+    {"category": "coding",
+     "prompt": "Refactor the snippet below so it no longer throws on empty "
+               "input and handles a single element."},
+    {"category": "coding",
+     "prompt": "Walk me through writing a recursive solution to compute "
+               "Fibonacci numbers, then give the final routine."},
+    {"category": "coding",
+     "prompt": "There's an off-by-one error somewhere in this loop — can you "
+               "spot and correct it?"},
+    # summarisation — no "summarise"
+    {"category": "summarisation",
+     "prompt": "Give me the gist of this report in a couple of lines so I can "
+               "brief the team quickly."},
+    {"category": "summarisation",
+     "prompt": "Condense the following passage to its three key points."},
+    {"category": "summarisation",
+     "prompt": "TL;DR the article below for me, please — I don't have time to "
+               "read the whole thing."},
+    {"category": "summarisation",
+     "prompt": "Pull out the main action items from these notes and list who "
+               "owns each one."},
+    # instruction_following — no exact discriminative phrase
+    {"category": "instruction_following",
+     "prompt": "Reply using only lowercase letters and keep it under twenty "
+               "words total."},
+    {"category": "instruction_following",
+     "prompt": "Produce a bulleted list of four items, each no longer than five "
+               "words."},
+    {"category": "instruction_following",
+     "prompt": "Answer in valid JSON and nothing else, with a name and a list "
+               "of values."},
+    {"category": "instruction_following",
+     "prompt": "Write three lines, each beginning with a capital letter, in "
+               "reverse alphabetical order."},
+    # agentic — no "tools available" / "using the tools"
+    {"category": "agentic",
+     "prompt": "You have access to a lookup function and a calculator. Find the "
+               "total deposits across the three branches."},
+    {"category": "agentic",
+     "prompt": "Use the search tool to retrieve the founding year, then report "
+               "it back to me."},
+    {"category": "agentic",
+     "prompt": "Query the knowledge base for the population figures of each "
+               "district and give me their sum."},
+    {"category": "agentic",
+     "prompt": "Look up the archive code for the east wing and respond with the "
+               "final answer."},
+    # straddling — genuinely ambiguous, labelled by primary intent
+    {"category": "summarisation",
+     "prompt": "Summarise this Python function's behaviour in two short "
+               "sentences."},
+    {"category": "reasoning",
+     "prompt": "Write exactly two sentences explaining how many primes are "
+               "below ten."},
+]
+
+
+def evaluate_ood(min_confidence: float = DEFAULT_MIN_CONFIDENCE,
+                 prompts: list[dict] | None = None) -> dict:
+    """Classify the OOD prompts (text only, no model calls) against their known
+    labels. Returns metrics: accuracy, fail-safe rate (low-confidence guesses
+    that the router would send to cloud), and — the number that matters — the
+    'silent misroute' rate: confident-but-wrong guesses the fail-safe does NOT
+    catch. Also returns the per-prompt rows and a per-category breakdown."""
+    items = prompts if prompts is not None else OOD_PROMPTS
+    n = len(items)
+    correct = fail_safe = silent_misroute = 0
+    rows = []
+    per_cat: dict[str, dict] = {c: {"n": 0, "correct": 0} for c in CATEGORIES}
+    for item in items:
+        true_cat = item["category"]
+        cr = classify(item["prompt"])
+        low_conf = cr.confidence < min_confidence
+        ok = cr.category == true_cat
+        correct += ok
+        if low_conf:
+            fail_safe += 1
+        elif not ok:
+            # confident AND wrong: the dangerous case the gate cannot catch
+            silent_misroute += 1
+        per_cat[true_cat]["n"] += 1
+        per_cat[true_cat]["correct"] += ok
+        rows.append({
+            "true": true_cat, "predicted": cr.category,
+            "confidence": round(cr.confidence, 2),
+            "low_confidence": low_conf, "correct": ok,
+            "prompt": item["prompt"],
+        })
+    return {
+        "n": n,
+        "accuracy": correct / n if n else 0.0,
+        "correct": correct,
+        "fail_safe_rate": fail_safe / n if n else 0.0,
+        "fail_safe": fail_safe,
+        "silent_misroute_rate": silent_misroute / n if n else 0.0,
+        "silent_misroutes": silent_misroute,
+        "min_confidence": min_confidence,
+        "per_category": per_cat,
+        "rows": rows,
+    }
+
+
+def format_ood_report(res: dict) -> str:
+    """Render evaluate_ood() output as markdown."""
+    n = res["n"]
+    lines = ["# Router OOD robustness — out-of-distribution prompts", ""]
+    lines.append(
+        "Hand-written prompts that straddle categories or use unusual phrasing "
+        "(no suite prompts, no model inference). This measures honest "
+        "degradation from the best-case 100% the classifier scores on the "
+        "discriminative v1 prompts.")
+    lines.append("")
+    lines.append(f"prompts            : {n}")
+    lines.append(f"min_confidence     : {res['min_confidence']}")
+    lines.append(f"classification acc : {res['correct']}/{n} = "
+                 f"{res['accuracy'] * 100:.1f}%")
+    lines.append(f"fail-safe rate     : {res['fail_safe']}/{n} = "
+                 f"{res['fail_safe_rate'] * 100:.1f}% "
+                 f"(low-confidence guesses routed to cloud)")
+    lines.append(f"silent misroutes   : {res['silent_misroutes']}/{n} = "
+                 f"{res['silent_misroute_rate'] * 100:.1f}% "
+                 f"(confident AND wrong — the gate cannot catch these)")
+    lines.append("")
+    lines.append("## Accuracy by true category")
+    lines.append("")
+    lines.append("| category | correct / n |")
+    lines.append("|---|---|")
+    for c in CATEGORIES:
+        pc = res["per_category"][c]
+        lines.append(f"| {c} | {pc['correct']}/{pc['n']} |")
+    lines.append("")
+    lines.append("| true | predicted | conf | fail-safe | result |")
+    lines.append("|---|---|---|---|---|")
+    for r in res["rows"]:
+        result = "ok" if r["correct"] else (
+            "caught (->cloud)" if r["low_confidence"] else "SILENT MISROUTE")
+        fs = "yes" if r["low_confidence"] else ""
+        lines.append(f"| {r['true']} | {r['predicted']} | {r['confidence']:.2f} "
+                     f"| {fs} | {result} |")
+    lines.append("")
+    lines.append(
+        "Reading it: the fail-safe converts most misclassifications into safe "
+        "(cloud) routes at a small cost premium; the silent-misroute rate is the "
+        "real exposure, since those are routed by a confident but wrong guess.")
+    return "\n".join(lines)
+
+
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
 def _selftest() -> None:
@@ -405,6 +580,24 @@ def _selftest() -> None:
     out = r2.dispatch("How many candles?")
     assert out["ok"] is False and "unreachable" in out["error"], out
 
+    # OOD robustness dataset + evaluator (no model calls).
+    assert len(OOD_PROMPTS) >= 20, len(OOD_PROMPTS)
+    assert all(p["category"] in CATEGORIES for p in OOD_PROMPTS)
+    ood = evaluate_ood()
+    assert ood["n"] == len(OOD_PROMPTS)
+    assert 0.0 <= ood["accuracy"] <= 1.0
+    # Clean partition: confident-correct + silent-misroute + fail-safe == n.
+    # (silent_misroute = confident&wrong; fail_safe = every low-confidence row.)
+    confident_correct = sum(
+        1 for r in ood["rows"] if r["correct"] and not r["low_confidence"])
+    assert confident_correct + ood["silent_misroutes"] + ood["fail_safe"] \
+        == ood["n"], ood
+    # OOD is genuinely harder than the discriminative suite (which scores 100%).
+    assert ood["accuracy"] < 1.0, ood
+    # The report renders and carries the headline numbers.
+    rep = format_ood_report(ood)
+    assert "classification acc" in rep and "silent misroutes" in rep
+
     print("selftest: all assertions passed")
 
 
@@ -434,6 +627,13 @@ def main() -> None:
     ev.add_argument("--local-model", default=None)
     ev.add_argument("--cloud-model", default=None)
 
+    od = sub.add_parser("ood", help="classifier robustness on OOD prompts (no "
+                                    "model inference)")
+    od.add_argument("--min-confidence", type=float,
+                    default=DEFAULT_MIN_CONFIDENCE)
+    od.add_argument("--out", default=None,
+                    help="optional path to write the markdown report")
+
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
@@ -453,6 +653,13 @@ def main() -> None:
         print(evaluate(args.local_run, args.cloud_run, args.pricing,
                        args.threshold, args.min_confidence,
                        local_model=args.local_model, cloud_model=args.cloud_model))
+    elif args.cmd == "ood":
+        report = format_ood_report(evaluate_ood(args.min_confidence))
+        print(report)
+        if args.out:
+            import pathlib
+            pathlib.Path(args.out).write_text(report + "\n", encoding="utf-8")
+            print(f"\nwrote {args.out}")
     else:
         ap.print_help()
 
