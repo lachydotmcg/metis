@@ -244,6 +244,15 @@ keeps answering correctly (quality stays 1.00) at a fraction of the speed. The c
 not a gentle slope, is the point — between 8k and 16k the card crosses from
 VRAM-resident to spilled.
 
+This is now detected automatically rather than described by eye:
+`context_scale.detect_silent_spill` flags the first context size whose mean decode
+throughput collapses to ≤50% of the previous size's while still recording zero errors,
+and the report header now carries a machine-readable `silent_spill: true` line with the
+boundary (here: 8192 → 16384, drop ratio 0.27). A drop that arrives *with* errors is an
+out-of-memory failure and is deliberately **not** flagged as a silent spill — the two
+regimes are distinct. The check is eval-free: it runs on already-collected results, so it
+re-applies to any past or future context-scale run without new inference.
+
 ### Honest caveats
 
 - Context length here is filler padding, not genuinely information-dense long input;

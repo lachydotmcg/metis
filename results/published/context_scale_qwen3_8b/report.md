@@ -5,6 +5,8 @@ Quality and speed for v1 reasoning tasks padded to fill each context window size
 - model: qwen3:8b | repeats: 3 | num_predict: 2048 | temperature: 0 | seed: 1234
 - preflight: {'checked': True, 'cpu_pct': 12.4, 'ram_available_gb': 15.0}
 
+**silent_spill: true** — Decode throughput collapsed from ~36 tok/s at context 8192 to ~10 tok/s at context 16384 with zero errors — the run 'fits but crawls' (WDDM silent-spill / KV-cache cliff, RESEARCH.md §3).
+
 | context | tasks | score (mean) | decode tok/s | wall_s (mean) | errors |
 |---|---|---|---|---|---|
 | 512 | 5 | 1.00 | 41.4 | 19.2 | 0 |

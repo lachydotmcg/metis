@@ -60,6 +60,13 @@ FILLER_SENTENCE = (
 # preflight fails we skip the run rather than override it (per OVERNIGHT_PLAN).
 PREFLIGHT_CPU_LIMIT = 40.0
 
+# Silent-spill detection: a single-step drop in decode throughput to at or below
+# this fraction of the previous (next-smaller) context size's throughput — with
+# NO generation errors at the slower size — is the Windows WDDM "fits but crawls"
+# signature (the KV cache spills from dedicated VRAM into shared system memory,
+# so the run still completes but decode collapses). 0.5 = a >=50% one-step drop.
+SILENT_SPILL_RATIO = 0.5
+
 
 def preflight_ok() -> tuple[bool, dict]:
     """Return (ok, info). ok is False when background CPU load is above the
@@ -245,6 +252,65 @@ def run_experiment(model: str, sizes: tuple[int, ...], repeats: int,
     return results
 
 
+def _tps_by_size(results: list[dict]) -> dict:
+    """Aggregate decode tok/s and error counts per context size."""
+    from collections import defaultdict
+    agg: dict[int, dict] = defaultdict(lambda: {"tps": [], "errors": 0})
+    for r in results:
+        a = agg[r["context_size"]]
+        if r.get("ok") and r.get("decode_tps") is not None:
+            a["tps"].append(r["decode_tps"])
+        if not r.get("ok"):
+            a["errors"] += 1
+    return agg
+
+
+def detect_silent_spill(results: list[dict],
+                        ratio: float = SILENT_SPILL_RATIO) -> dict:
+    """Detect a Windows WDDM silent-spill / KV-cache cliff from collected
+    results alone — no model calls. Scanning context sizes from small to large,
+    flag the first size whose mean decode throughput collapses to <= `ratio` of
+    the previous (next-smaller) size's mean throughput while that size still has
+    ZERO generation errors (it "fits but crawls"). A drop that comes WITH errors
+    is an out-of-memory failure, not a silent spill, and is not flagged here.
+
+    Returns a dict always carrying `silent_spill` (bool) and `note` (str); when
+    True it also carries the boundary context size, the baseline/spill tok/s, and
+    the drop ratio.
+    """
+    agg = _tps_by_size(results)
+    prev_size = prev_tps = None
+    for size in sorted(agg):
+        a = agg[size]
+        mean_tps = sum(a["tps"]) / len(a["tps"]) if a["tps"] else None
+        if mean_tps is None:
+            continue
+        if (prev_tps is not None and a["errors"] == 0
+                and mean_tps <= prev_tps * ratio):
+            return {
+                "silent_spill": True,
+                "boundary_context": size,
+                "baseline_context": prev_size,
+                "baseline_tps": round(prev_tps, 1),
+                "spill_tps": round(mean_tps, 1),
+                "drop_ratio": round(mean_tps / prev_tps, 3),
+                "ratio_threshold": ratio,
+                "note": (
+                    f"Decode throughput collapsed from ~{prev_tps:.0f} tok/s at "
+                    f"context {prev_size} to ~{mean_tps:.0f} tok/s at context "
+                    f"{size} with zero errors — the run 'fits but crawls' "
+                    f"(WDDM silent-spill / KV-cache cliff, RESEARCH.md §3)."),
+            }
+        prev_size, prev_tps = size, mean_tps
+    return {
+        "silent_spill": False,
+        "boundary_context": None,
+        "note": ("No silent-spill cliff detected: decode throughput degrades "
+                 "gradually with context (no single-step 'fits but crawls' "
+                 "drop)."),
+    }
+
+
 def format_report(results: list[dict], model: str,
                   header_notes: list[str] | None = None) -> str:
     """Summarise results as a markdown report."""
@@ -275,6 +341,10 @@ def format_report(results: list[dict], model: str,
         lines.append(f"- {note}")
     if header_notes:
         lines.append("")
+    spill = detect_silent_spill(results)
+    lines.append(f"**silent_spill: {str(spill['silent_spill']).lower()}** — "
+                 f"{spill['note']}")
+    lines.append("")
     lines.append("| context | tasks | score (mean) | decode tok/s | wall_s (mean) | errors |")
     lines.append("|---|---|---|---|---|---|")
     for size in sorted(by_size):
@@ -352,6 +422,57 @@ def _selftest() -> None:
     # Scores should all be 0 since mock returns "Answer: 42" and tasks expect different numbers.
     sizes_seen = {r["context_size"] for r in results}
     assert sizes_seen == {512, 2048}, sizes_seen
+
+    # Silent-spill detection on synthetic samples (no model calls).
+    def _mkres(rows):
+        """rows: list of (context_size, decode_tps_or_None, n_errors)."""
+        out = []
+        for size, tps, errs in rows:
+            if tps is not None:
+                out.append({"context_size": size, "ok": True,
+                            "decode_tps": tps})
+            for _ in range(errs):
+                out.append({"context_size": size, "ok": False,
+                            "decode_tps": None})
+        return out
+
+    # A sharp one-step collapse with zero errors = silent spill (the real qwen3
+    # 8k->16k cliff: ~40 -> ~10 tok/s, still fits).
+    cliff = detect_silent_spill(_mkres(
+        [(512, 40, 0), (2048, 38, 0), (8192, 37, 0), (16384, 9.8, 0)]))
+    assert cliff["silent_spill"] is True, cliff
+    assert cliff["boundary_context"] == 16384, cliff
+    assert cliff["baseline_context"] == 8192, cliff
+
+    # A gradual decline (each step > 50% of the last) is NOT a cliff.
+    gradual = detect_silent_spill(_mkres(
+        [(512, 40, 0), (2048, 30, 0), (8192, 22, 0), (16384, 15, 0)]))
+    assert gradual["silent_spill"] is False, gradual
+
+    # A drop that comes WITH generation errors is OOM (did not fit), not a
+    # silent spill.
+    oom = detect_silent_spill(_mkres(
+        [(512, 40, 0), (2048, 38, 0), (8192, 9.0, 3)]))
+    assert oom["silent_spill"] is False, oom
+
+    # Multiple repeats at a size are averaged before comparison.
+    multi = detect_silent_spill(_mkres(
+        [(512, 42, 0), (512, 38, 0), (16384, 9, 0), (16384, 11, 0)]))
+    assert multi["silent_spill"] is True and multi["boundary_context"] == 16384
+
+    # Degenerate inputs never crash and report no spill.
+    assert detect_silent_spill([])["silent_spill"] is False
+    assert detect_silent_spill(_mkres([(512, 40, 0)]))["silent_spill"] is False
+
+    # The flag surfaces in the rendered report.
+    full_rows = [
+        {"context_size": 512, "task_id": "t1", "ok": True, "score": 1.0,
+         "decode_tps": 40.0, "wall_s": 10.0},
+        {"context_size": 16384, "task_id": "t1", "ok": True, "score": 1.0,
+         "decode_tps": 9.0, "wall_s": 44.0},
+    ]
+    rep = format_report(full_rows, "qwen3:8b")
+    assert "silent_spill: true" in rep, rep
     print("selftest: all assertions passed")
 
 
