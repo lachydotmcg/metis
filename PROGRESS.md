@@ -1,14 +1,14 @@
 # Progress Log
 
-## 2026-06-15 (overnight, ~03:0x + 04:02 AEST) — integrity re-verification (no new work)
+## 2026-06-15 (overnight, ~03:0x + 04:02 + 07:0x AEST) — integrity re-verification (no new work)
 
-Re-invoked twice overnight with all six OVERNIGHT_PLAN v2 tasks already complete
-and pushed. The committed plan has no remaining numbered tasks, and my authority
-is bounded strictly by it, so I did **not** improvise work outside the plan. Both
-runs re-verified integrity only; state unchanged between them:
+Re-invoked three times overnight with all six OVERNIGHT_PLAN v2 tasks already
+complete and pushed. The committed plan has no remaining numbered tasks, and my
+authority is bounded strictly by it, so I did **not** improvise work outside the
+plan. All three runs re-verified integrity only; state unchanged between them:
 
-- Git: working tree clean; local HEAD == `origin/main` (now `a87b0cd`, which
-  carries the first re-verification note).
+- Git: working tree clean; local HEAD == `origin/main` (the prior re-verification
+  note rides on `549deca`; this 07:0x note rides on the commit below).
 - Full mandated gate green: `test_scoring` (12), `test_judge` (14),
   `test_memory_retrieval` (4), `test_judge_agreement` (9), `test_saturation` (6),
   `router --selftest`, `context_scale --selftest`.
