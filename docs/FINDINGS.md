@@ -20,10 +20,11 @@ plus `judge_scores.jsonl` for `needs_judge` summarisation rows.
 
 ## Anchored Quality
 
-Claude Sonnet 4.6 is the frontier-ish reference for the main benchmark. Against
-that anchor, qwen3:8b is much closer than the raw model-size intuition suggests:
-it reaches 87% of Claude's mean per-task quality and clears a 90%-of-Claude bar
-on 81% of tasks.
+Claude Sonnet 4.6 is the reference for the main benchmark, but it is also near the
+ceiling of Metis v1. Against that bounded anchor, qwen3:8b reaches 87% of Claude's
+mean per-task quality and clears a 90%-of-Claude bar on 81% of tasks. This should
+be read as practical suite coverage, not as "qwen3:8b is 13% less intelligent than
+Claude."
 
 | model | mean quality | mean vs Claude | tasks >=90% of Claude | absolute coverage@0.9 | decode tok/s | peak VRAM MB |
 |---|---:|---:|---:|---:|---:|---:|
@@ -32,10 +33,12 @@ on 81% of tasks.
 | deepseek-r1:7b | 0.65 | 66% | 52% | 52% | 41.7 | 7806 |
 | claude-sonnet-4-6 | 0.98 | 100% | 100% | 90% | 35.3 | n/a |
 
-Per category, qwen3:8b matches or beats Claude on agentic, reasoning, and
-summarisation in this small suite, but still loses badly on coding. qwen3:1.7b
-is fast and useful, but not reliable once the task requires multi-step tool use
-or coding correctness.
+Per category, qwen3:8b reaches the same measured ceiling as Claude on agentic and
+reasoning tasks, scores higher on the judged summarisation rows, and still loses
+badly on coding. Because Claude is already at or near the top of the scale in
+several categories, these category ties are saturation signals. They do not prove
+that the local model has the same latent capability as Claude or a stronger cloud
+model.
 
 | category | Claude Sonnet 4.6 | qwen3:8b | qwen3:1.7b | deepseek-r1:7b |
 |---|---:|---:|---:|---:|
@@ -48,6 +51,27 @@ or coding correctness.
 Interpretation: the local story is not "8GB replaces Claude." It is "an 8GB
 card covers a surprisingly large and identifiable chunk of the workload, if
 you route by task type."
+
+## Ceiling And Headroom
+
+The current benchmark is strongest as a local-coverage test, not as a frontier
+model ranking test. Claude Sonnet 4.6's near-ceiling score means the suite has
+limited headroom above it: if Opus or another stronger model also scored 100%, that
+would show benchmark saturation, not equal intelligence between the cloud models.
+
+This matters for the headline comparison. The 87% number is anchored to the
+observable Metis v1 task envelope. It says qwen3:8b solves much of this suite on
+this machine; it does not say the model is only 13% below Claude in general.
+Future suites need harder tasks to measure frontier headroom separately from local
+coverage.
+
+Saturation is now a measured, reproducible fact, not just a caveat. Run
+`metis saturation results/20260612_201339` (artifact: `saturation.md` /
+`saturation.json` in that run). On the Claude reference run it reports
+**mean 0.976, 18/21 tasks (86%) at the ceiling (≥0.99), 3/5 categories saturated,
+headroom 0.024, `reference_saturated: true`** — so the suite has, by its own
+metric, run out of room to distinguish Claude from a stronger model. Any future
+"X% of Claude" headline should be read alongside this flag.
 
 ## Step-Depth Degradation
 
@@ -62,9 +86,9 @@ agentic tasks requiring 1, 2, 3, and 5 tool-depth steps.
 | claude-sonnet-4-6 | 100% | 100% | 100% | 100% | >5 |
 
 Small local models handled a single lookup, then broke immediately at depth 2.
-qwen3:8b matched Claude through depth 5. That is a qualitative boundary, not
-just a few points on an average score: on this protocol, the 8B local model is
-the first local tier that makes multi-step tool use reliable.
+qwen3:8b and Claude both reached the measured ceiling through depth 5. That is a
+qualitative boundary for local usefulness, not proof that they would remain tied
+on deeper or more adversarial agentic tasks.
 
 ## Routing Reality Check
 

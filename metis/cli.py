@@ -64,6 +64,12 @@ def main(argv=None):
     ec.add_argument("run_dir")
     ec.add_argument("--pricing", default="config/pricing.yaml")
 
+    sat = sub.add_parser("saturation",
+                         help="ceiling-effect metrics for a scored run")
+    sat.add_argument("run_dir")
+    sat.add_argument("--out", default=None,
+                     help="markdown output path (default: <run_dir>/saturation.md)")
+
     args = p.parse_args(argv)
 
     if args.cmd == "fingerprint":
@@ -128,6 +134,12 @@ def main(argv=None):
     elif args.cmd == "economics":
         from .economics import compute
         print(compute(args.run_dir, args.pricing))
+
+    elif args.cmd == "saturation":
+        from .saturation import compute as sat_compute, render_markdown, write_report
+        out = write_report(args.run_dir, args.out)
+        print(render_markdown(sat_compute(args.run_dir)))
+        print(f"\nwrote {out}")
 
 
 if __name__ == "__main__":
