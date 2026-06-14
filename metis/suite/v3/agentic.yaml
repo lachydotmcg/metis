@@ -1,0 +1,95 @@
+# Metis suite v3.0 — agentic tool use (frontier headroom). Deeper than v2's
+# step-depth ladder: each task needs more than five dependent tool calls,
+# conditional branching (the final answer depends on a comparison made from
+# looked-up values), an argmin/argmax over per-entity ratios, or recovery from
+# an injected tool failure. All entities are fictional so answers cannot exist
+# in training data. Tools and protocol: metis/agentic.py. FROZEN.
+version: "3.0"
+category: agentic_deep
+tasks:
+  - id: agentic_deep.relay_total
+    required_tool_depth: 8
+    max_steps: 14
+    max_tokens: 2048
+    prompt: |
+      Using the tools available, compute the relay total. Look up the cargo
+      mass of all five depots — Aldfen, Borric, Cindle, Dovar and Eshton — and
+      add them together. Then look up the relay factor and the fixed surcharge.
+      Multiply the summed cargo mass by the relay factor, then add the
+      surcharge. Give the number as your final answer.
+    tools:
+      corpus:
+        "cargo mass of aldfen depot": "Aldfen Depot reports a cargo mass of 120 units."
+        "cargo mass of borric depot": "Borric Depot reports a cargo mass of 210 units."
+        "cargo mass of cindle depot": "Cindle Depot reports a cargo mass of 75 units."
+        "cargo mass of dovar depot": "Dovar Depot reports a cargo mass of 340 units."
+        "cargo mass of eshton depot": "Eshton Depot reports a cargo mass of 155 units."
+        "relay factor": "The relay factor is 3."
+        "fixed surcharge": "The fixed surcharge is 90 units."
+    scoring:
+      type: agentic_final
+      expected: 2790
+      match: numeric
+
+  - id: agentic_deep.branch_custodian
+    required_tool_depth: 4
+    max_steps: 10
+    max_tokens: 2048
+    prompt: |
+      Compare the sealed vault counts of the Tharn Registry and the Velm
+      Registry. If the Tharn Registry holds strictly more sealed vaults than the
+      Velm Registry, give the custodian of the Tharn Registry as your final
+      answer; otherwise give the custodian of the Velm Registry. Use the tools
+      to look up whatever you need.
+    tools:
+      corpus:
+        "sealed vault count of tharn registry": "The Tharn Registry holds 612 sealed vaults."
+        "sealed vault count of velm registry": "The Velm Registry holds 588 sealed vaults."
+        "custodian of tharn registry": "The custodian of the Tharn Registry is Marlowe."
+        "custodian of velm registry": "The custodian of the Velm Registry is Pell."
+    scoring:
+      type: agentic_final
+      expected: Marlowe
+      match: text
+
+  - id: agentic_deep.argmax_per_crew
+    required_tool_depth: 6
+    max_steps: 14
+    max_tokens: 2048
+    prompt: |
+      Three mills reported their output and crew size: Fenn, Garrow and Holt.
+      Using the tools, determine which mill has the highest output per crew
+      member (output divided by crew size). Give that mill's name as your final
+      answer.
+    tools:
+      corpus:
+        "output of fenn mill": "Fenn Mill output is 4,800 bales."
+        "crew size of fenn mill": "Fenn Mill has a crew of 60."
+        "output of garrow mill": "Garrow Mill output is 9,300 bales."
+        "crew size of garrow mill": "Garrow Mill has a crew of 150."
+        "output of holt mill": "Holt Mill output is 2,200 bales."
+        "crew size of holt mill": "Holt Mill has a crew of 20."
+    scoring:
+      type: agentic_final
+      expected: Holt
+      match: text
+
+  - id: agentic_deep.recover_argmin
+    required_tool_depth: 3
+    max_steps: 12
+    max_tokens: 2048
+    fail_first_call: true
+    prompt: |
+      Three relay stations reported their signal strength: Quorin, Raxle and
+      Sennet. Using the tools, determine which station has the LOWEST signal
+      strength. Give that station's name as your final answer. (A tool call may
+      fail transiently; retry it if it does.)
+    tools:
+      corpus:
+        "signal strength of quorin station": "Quorin Station signal strength: 74 dB."
+        "signal strength of raxle station": "Raxle Station signal strength: 61 dB."
+        "signal strength of sennet station": "Sennet Station signal strength: 88 dB."
+    scoring:
+      type: agentic_final
+      expected: Raxle
+      match: text

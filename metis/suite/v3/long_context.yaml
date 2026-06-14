@@ -1,0 +1,102 @@
+# Metis suite v3.0 — long-context comprehension (frontier headroom). Each task
+# embeds the two (or three) facts the answer depends on far apart inside a long
+# passage that is otherwise full of plausible distractor numbers and names, so
+# the answer cannot be reached by grabbing the last/biggest number. All content
+# is original and fictional (contamination policy: docs/METHODOLOGY.md §5).
+# Scored programmatically (numeric/choice exact). oracle_text is the reference
+# answer the v3 self-test scores to confirm the key is reachable. FROZEN.
+version: "3.0"
+category: long_context
+tasks:
+  - id: long_context.reserve_delta
+    max_tokens: 2048
+    oracle_text: "Answer: 1,250"
+    prompt: |
+      Read the following stewardship report carefully, then answer the question
+      at the end.
+
+      Annual stewardship report for the Tarnwick Conservancy, fiscal cycle 49.
+
+      The conservancy opened the cycle with a protected-land reserve of 7,400
+      hectares under active management. During the year, 312 registered
+      volunteers contributed roughly 18,600 hours of fieldwork across 18 ranger
+      stations. The visitor centre recorded 52,140 day visitors, up from 47,900
+      the previous cycle, and the education programme reached 96 partner
+      schools. A restoration grant of 1,350,000 credits funded wetland repair on
+      640 hectares, while a separate bequest of 220,000 credits was reserved for
+      seed-bank expansion. Three wildfires burned a combined 1,180 hectares, of
+      which 910 hectares were later reclassified as recovering rather than lost.
+      The ranger corps grew from 44 to 51 staff, and the drone survey logged
+      2,975 flight kilometres. Membership subscriptions totalled 8,300 households
+      paying an average of 65 credits each. Mid-cycle, the boundary commission
+      transferred 500 hectares of buffer land out of active management pending a
+      legal review, and a neighbouring estate donated the 1,750-hectare
+      Hollowmere parcel, of which only part was immediately brought under
+      management. After the boundary survey, the reclassification, and the
+      Hollowmere acquisition were all recorded, the conservancy closed the cycle
+      with a protected-land reserve of 8,650 hectares under active management.
+
+      Question: By how many hectares did the protected-land reserve grow from the
+      opening figure to the closing figure of the cycle? Work it out, then end
+      your reply with a line in exactly this format: Answer: <number>
+    scoring:
+      type: numeric_exact
+      expected: 1250
+
+  - id: long_context.night_navigator
+    max_tokens: 2048
+    oracle_text: "Answer: Calder"
+    prompt: |
+      Read the following crew assignment memo carefully, then answer the
+      question at the end.
+
+      Survey vessel Meridian Drift — watch roster for the Solenne Passage leg.
+
+      The expedition lead, Dr. Iyalu Brannock, has confirmed the following
+      assignments. The day-shift helm is held by Renner, with Toft as day-shift
+      lookout and Devar covering day-shift communications. Galley duties rotate
+      between Asha and Polk. The chief engineer is Vance, assisted on the
+      mechanical watch by Sennan and, for the boiler room, by Orsk. The
+      day-shift navigator is Marlowe, a veteran of the northern routes. The
+      science deck is led by Dr. Quill, with Heron and Ibsen running the sonar
+      array and Tamsin logging samples. For the night shift, the helm passes to
+      Brae, the lookout to Wren, and communications to Lestyn. Night-shift
+      engineering is covered by Frost. The night-shift navigator is Calder, who
+      requested the watch specifically to study the southern stars. The reserve
+      pilot, on call for either shift, is Odine. Medical cover for the whole leg
+      is provided by Dr. Salk.
+
+      Question: Who is assigned as the night-shift navigator? End your reply with
+      a line in exactly this format: Answer: <name>
+    scoring:
+      type: choice_exact
+      expected: Calder
+      options: [Renner, Toft, Devar, Marlowe, Brae, Wren, Lestyn, Frost, Calder, Odine, Vance, Quill]
+
+  - id: long_context.manifest_sum
+    max_tokens: 2048
+    oracle_text: "Answer: 1,965"
+    prompt: |
+      Read the following warehouse manifest carefully, then answer the question
+      at the end.
+
+      Depot 12 — quarterly intake manifest, Greywater Logistics.
+
+      Pallet A1 received 320 units of insulated cabling. Pallet A2 received 1,205
+      units of galvanised brackets. Pallet A3 received 88 units of pressure
+      valves. Pallet B1 received 2,640 units of ceramic insulators, the largest
+      single line this quarter. Pallet B2 received 415 units of copper lugs.
+      Pallet B3 received 30 units of calibration kits. Pallet C1 received 1,990
+      units of conduit clips. Pallet C2 received 760 units of sealing gaskets.
+      Pallet C3 received 144 units of relay modules. Pallet D1 received 3,300
+      units of fastener packs, later found to be double-counted and corrected to
+      half that figure in a footnote. Pallet D2 received 525 units of terminal
+      blocks. Pallet D3 received 1,820 units of mounting rails. The audit flagged
+      Pallet B1 and Pallet D1 for re-inspection but cleared both.
+
+      Question: What is the combined number of units received on Pallet A2 and
+      Pallet C2? Add the two together, then end your reply with a line in exactly
+      this format: Answer: <number>
+    scoring:
+      type: numeric_exact
+      expected: 1965

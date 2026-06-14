@@ -1,0 +1,200 @@
+# Metis suite v3.0 — coding (frontier headroom). Harder than v1: dynamic
+# programming, matrix traversal, parsing with lookahead, RPN evaluation, and a
+# subtle off-by-one debug. The prompt shows ONE example; the scoring `tests`
+# include hidden edge cases (empty input, single element, impossible cases,
+# boundary shapes) so a happy-path-only solution does not score 1.0. Each task
+# carries oracle_code; the v3 self-test runs the reference against its own tests
+# so a broken test cannot masquerade as a model failure. FROZEN.
+version: "3.0"
+category: coding
+tasks:
+  - id: coding.min_coins
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `min_coins(coins: list, amount: int) -> int` that
+      returns the minimum number of coins needed to make `amount` using any
+      number of each denomination in `coins`. Return -1 if the amount cannot be
+      made, and 0 when the amount is 0. Example: min_coins([1, 2, 5], 11)
+      returns 3 (5 + 5 + 1).
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def min_coins(coins, amount):
+          INF = float("inf")
+          dp = [0] + [INF] * amount
+          for a in range(1, amount + 1):
+              for c in coins:
+                  if c <= a and dp[a - c] + 1 < dp[a]:
+                      dp[a] = dp[a - c] + 1
+          return dp[amount] if dp[amount] != INF else -1
+    scoring:
+      type: code_tests
+      entry_point: min_coins
+      tests:
+        - {call: "min_coins([1, 2, 5], 11)", expected: "3"}
+        - {call: "min_coins([2], 3)", expected: "-1"}
+        - {call: "min_coins([1], 0)", expected: "0"}
+        - {call: "min_coins([1, 2, 5, 10], 27)", expected: "4"}
+        - {call: "min_coins([3, 7], 5)", expected: "-1"}
+        - {call: "min_coins([5], 0)", expected: "0"}
+
+  - id: coding.spiral_order
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `spiral_order(matrix: list) -> list` that returns
+      all elements of a 2-D integer matrix (a list of equal-length rows) in
+      clockwise spiral order starting from the top-left. Return an empty list
+      for an empty matrix. Example: spiral_order([[1, 2, 3], [4, 5, 6],
+      [7, 8, 9]]) returns [1, 2, 3, 6, 9, 8, 7, 4, 5].
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def spiral_order(matrix):
+          res = []
+          if not matrix or not matrix[0]:
+              return res
+          top, bottom = 0, len(matrix) - 1
+          left, right = 0, len(matrix[0]) - 1
+          while top <= bottom and left <= right:
+              for c in range(left, right + 1):
+                  res.append(matrix[top][c])
+              top += 1
+              for r in range(top, bottom + 1):
+                  res.append(matrix[r][right])
+              right -= 1
+              if top <= bottom:
+                  for c in range(right, left - 1, -1):
+                      res.append(matrix[bottom][c])
+                  bottom -= 1
+              if left <= right:
+                  for r in range(bottom, top - 1, -1):
+                      res.append(matrix[r][left])
+                  left += 1
+          return res
+    scoring:
+      type: code_tests
+      entry_point: spiral_order
+      tests:
+        - {call: "spiral_order([[1, 2, 3], [4, 5, 6], [7, 8, 9]])", expected: "[1, 2, 3, 6, 9, 8, 7, 4, 5]"}
+        - {call: "spiral_order([])", expected: "[]"}
+        - {call: "spiral_order([[1, 2, 3, 4]])", expected: "[1, 2, 3, 4]"}
+        - {call: "spiral_order([[1], [2], [3]])", expected: "[1, 2, 3]"}
+        - {call: "spiral_order([[1, 2], [3, 4]])", expected: "[1, 2, 4, 3]"}
+
+  - id: coding.roman_to_int
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `roman_to_int(s: str) -> int` that converts a
+      valid Roman numeral string (symbols I, V, X, L, C, D, M) to its integer
+      value, correctly handling subtractive notation (IV is 4, IX is 9, XL is
+      40, CM is 900). Example: roman_to_int("MCMXCIV") returns 1994.
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def roman_to_int(s):
+          vals = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+          total = 0
+          prev = 0
+          for ch in reversed(s):
+              v = vals[ch]
+              if v < prev:
+                  total -= v
+              else:
+                  total += v
+                  prev = v
+          return total
+    scoring:
+      type: code_tests
+      entry_point: roman_to_int
+      tests:
+        - {call: "roman_to_int('III')", expected: "3"}
+        - {call: "roman_to_int('IV')", expected: "4"}
+        - {call: "roman_to_int('IX')", expected: "9"}
+        - {call: "roman_to_int('LVIII')", expected: "58"}
+        - {call: "roman_to_int('XL')", expected: "40"}
+        - {call: "roman_to_int('MCMXCIV')", expected: "1994"}
+
+  - id: coding.eval_postfix
+    max_tokens: 2048
+    prompt: |
+      Write a Python function `eval_postfix(expr: str) -> int` that evaluates a
+      postfix (Reverse Polish Notation) arithmetic expression. Tokens are
+      separated by single spaces and are either integers or one of the
+      operators +, -, *, /. Division is integer division truncated toward zero
+      (so 7 / 2 is 3 and 13 / 5 is 2). A single number evaluates to itself.
+      Example: eval_postfix("5 1 2 + 4 * + 3 -") returns 14.
+
+      Reply with a single fenced python code block containing only the function.
+    oracle_code: |
+      def eval_postfix(expr):
+          stack = []
+          for tok in expr.split():
+              if tok in ("+", "-", "*", "/"):
+                  b = stack.pop()
+                  a = stack.pop()
+                  if tok == "+":
+                      stack.append(a + b)
+                  elif tok == "-":
+                      stack.append(a - b)
+                  elif tok == "*":
+                      stack.append(a * b)
+                  else:
+                      stack.append(int(a / b))
+              else:
+                  stack.append(int(tok))
+          return stack[-1]
+    scoring:
+      type: code_tests
+      entry_point: eval_postfix
+      tests:
+        - {call: "eval_postfix('3 4 +')", expected: "7"}
+        - {call: "eval_postfix('5 1 2 + 4 * + 3 -')", expected: "14"}
+        - {call: "eval_postfix('10 2 /')", expected: "5"}
+        - {call: "eval_postfix('7')", expected: "7"}
+        - {call: "eval_postfix('4 13 5 / +')", expected: "6"}
+
+  - id: coding.fix_bsearch
+    max_tokens: 2048
+    prompt: |
+      The following Python function is meant to return the index of `target` in
+      the sorted, distinct-valued list `a`, or -1 if it is absent, using binary
+      search. It has a bug that can cause it to loop forever or miss the target:
+
+      ```python
+      def bsearch(a, target):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] == target:
+                  return mid
+              elif a[mid] < target:
+                  lo = mid
+              else:
+                  hi = mid
+          return -1
+      ```
+
+      Fix it. Reply with a single fenced python code block containing only the
+      corrected function, still named `bsearch`.
+    oracle_code: |
+      def bsearch(a, target):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] == target:
+                  return mid
+              elif a[mid] < target:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return -1
+    scoring:
+      type: code_tests
+      entry_point: bsearch
+      tests:
+        - {call: "bsearch([1, 3, 5, 7, 9], 7)", expected: "3"}
+        - {call: "bsearch([1, 3, 5, 7, 9], 1)", expected: "0"}
+        - {call: "bsearch([1, 3, 5, 7, 9], 9)", expected: "4"}
+        - {call: "bsearch([1, 3, 5, 7, 9], 4)", expected: "-1"}
+        - {call: "bsearch([], 5)", expected: "-1"}
+        - {call: "bsearch([2], 2)", expected: "0"}

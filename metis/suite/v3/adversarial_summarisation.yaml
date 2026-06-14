@@ -1,0 +1,86 @@
+# Metis suite v3.0 — adversarial summarisation (frontier headroom). Each source
+# contains conflicting claims: an original figure that is later retracted, an
+# unofficial figure contradicted by an official register, or a disputed date
+# overturned by primary evidence. The task is to summarise ONLY the
+# currently-accurate / authoritative fact and to omit the superseded one. This
+# is scored programmatically (constraints) rather than by the judge: a
+# regex_must confirms the correct figure is present and a regex_forbid confirms
+# the retracted figure is absent, so resolving the conflict — not fluent prose —
+# is what is measured. All content is original and fictional. FROZEN.
+version: "3.0"
+category: adversarial_summary
+tasks:
+  - id: adversarial_summary.retraction
+    max_tokens: 1024
+    oracle_text: >
+      Drennan County's accurate 2049 water consumption was 3,150 megalitres,
+      after a transcription error in the bureau's first report was corrected.
+    prompt: |
+      Read the source below, then write a summary of at most 40 words stating
+      ONLY the currently-accurate figures. Do not mention any superseded or
+      retracted number.
+
+      Water Bureau bulletin — Drennan County usage review. The bureau initially
+      reported that Drennan County consumed 4,200 megalitres of water in 2049,
+      a figure widely quoted in local press. CORRECTION: a transcription error
+      inflated that number; after re-checking the meter logs, the bureau states
+      that the accurate 2049 consumption was 3,150 megalitres. For context,
+      Drennan County has a population of about 88,000 and 19 reservoirs, and its
+      2048 consumption was 3,090 megalitres. The corrected 2049 figure is now
+      the official record.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: max_words, value: 40}
+        - {kind: required_words, value: [Drennan]}
+        - {kind: regex_must, value: '\b3,?150\b'}
+        - {kind: regex_forbid, value: '\b4,?200\b'}
+
+  - id: adversarial_summary.official_register
+    max_tokens: 1024
+    oracle_text: >
+      According to the National Survey Register, the Veremont Bridge spans 1,450
+      metres.
+    prompt: |
+      Read the source below, then write a one-sentence summary giving the
+      bridge's length according to the official register only. Do not include any
+      figure from unofficial sources.
+
+      Veremont Bridge — length dispute. Several local forums and a popular travel
+      blog claim the Veremont Bridge spans 1,900 metres, a figure repeated in
+      many tourist guides. However, the National Survey Register — the official
+      authority — lists the bridge's main span as 1,450 metres, measured during
+      the most recent statutory survey. The bridge carries 14,000 vehicles a day
+      and was opened 38 years ago. The Register's figure supersedes the
+      unofficial claims.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: max_sentences, value: 1}
+        - {kind: required_words, value: [Veremont]}
+        - {kind: regex_must, value: '\b1,?450\b'}
+        - {kind: regex_forbid, value: '\b1,?900\b'}
+
+  - id: adversarial_summary.disputed_date
+    max_tokens: 1024
+    oracle_text: >
+      The original parchment dates the Halloran Treaty firmly to 1627.
+    prompt: |
+      Read the source below, then write a summary of at most 25 words giving the
+      year supported by the primary evidence. Do not mention the disputed earlier
+      date.
+
+      Dating the Halloran Treaty. Early chronicles long held that the Halloran
+      Treaty was signed in 1612, and this date appears in many secondary
+      histories. Modern scholarship, however, citing the recently authenticated
+      original parchment with its dated seal, places the signing firmly in 1627.
+      The treaty ended a 9-year border conflict and named 23 signatory houses.
+      Historians now treat 1627, supported by the primary document, as
+      definitive.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: max_words, value: 25}
+        - {kind: required_words, value: [Halloran]}
+        - {kind: regex_must, value: '\b1627\b'}
+        - {kind: regex_forbid, value: '\b1612\b'}

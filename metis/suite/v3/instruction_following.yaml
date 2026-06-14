@@ -1,0 +1,68 @@
+# Metis suite v3.0 — instruction following (frontier headroom). Harder than v1:
+# each task layers several interacting, mechanically-verifiable constraints that
+# pull against each other (write about a topic without using the obvious word
+# for it; an ordered, punctuation-free, digit-free list; a strict JSON shape
+# with typed keys and a bounded integer). Score is the fraction of constraints
+# passed. oracle_text is a reference answer that satisfies every constraint; the
+# v3 self-test confirms it scores 1.0 so the constraint set is jointly
+# satisfiable. FROZEN.
+version: "3.0"
+category: instruction_following
+tasks:
+  - id: instruction.triad
+    max_tokens: 1024
+    oracle_text: >
+      Solar panels quietly convert sunlight into electricity for homes and small
+      workshops across the country. Turbine blades spin in coastal winds, feeding
+      clean current into the regional grid every hour. Communities now store
+      surplus output in batteries, keeping lights bright long after sunset falls.
+    prompt: |
+      Write about renewable electricity in exactly three sentences, totalling
+      between 35 and 45 words. Every sentence must begin with a different word.
+      Do not use the words "power", "energy" or "very" anywhere. You must mention
+      both "turbine" and "solar".
+    scoring:
+      type: constraints
+      checks:
+        - {kind: exact_sentences, value: 3}
+        - {kind: min_words, value: 35}
+        - {kind: max_words, value: 45}
+        - {kind: distinct_first_words}
+        - {kind: forbidden_words, value: [power, energy, very]}
+        - {kind: required_words, value: [turbine, solar]}
+
+  - id: instruction.alpha_list
+    max_tokens: 1024
+    oracle_text: |
+      Avalon
+      Brixos
+      Caldera
+      Dornel
+      Eryndor
+    prompt: |
+      Invent five fictional planet names and list them one per line, in
+      alphabetical order. Output exactly five lines and nothing else: no
+      numbering, no bullet points, no punctuation of any kind, and no digits.
+    scoring:
+      type: constraints
+      checks:
+        - {kind: exact_lines, value: 5}
+        - {kind: alphabetical_lines}
+        - {kind: no_digits}
+        - {kind: regex_forbid, value: '[.,;:!?]'}
+
+  - id: instruction.json_strict
+    max_tokens: 1024
+    oracle_text: |
+      {"name": "Corvine", "scores": [7, 9, 4], "rank": 3, "active": true}
+    prompt: |
+      Respond with JSON only — a single object and nothing outside it — with
+      exactly these keys: "name" (a string), "scores" (an array of exactly three
+      integers), "rank" (an integer from 1 to 10), and "active" (a boolean).
+    scoring:
+      type: constraints
+      checks:
+        - {kind: json_only}
+        - {kind: json_keys, value: {name: str, scores: list, rank: int, active: bool}}
+        - {kind: json_array_len, value: {key: scores, len: 3}}
+        - {kind: json_int_range, value: {key: rank, min: 1, max: 10}}
