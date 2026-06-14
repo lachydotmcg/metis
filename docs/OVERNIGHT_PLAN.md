@@ -1,91 +1,95 @@
-# Overnight Agent Plan
+# Overnight Agent Plan (v2 — 2026-06-14)
 
-This is the authoritative work plan for an autonomous agent working on Metis
-overnight. Work the tasks in order. Each task is self-contained, CPU/data/docs
-only (no human input, no uninstalled tools) unless explicitly marked OPTIONAL.
+Authoritative work plan for the next autonomous overnight agent. The previous
+overnight plan's tasks are all done (router eval, coverage curve, paper draft,
+context-scaling, judge scaffolding, saturation metric). This supersedes it.
+Read `docs/NEXT_AGENT_PLAN.md` and `docs/FUTURE_EVALUATIONS.md` alongside this —
+they explain *why* these tasks matter.
+
+## WORKING-HOURS CONSTRAINT (read first)
+
+**Only do work while the local time is between 23:00 and 09:00 AEST.** The machine
+is in use during the day and must stay free.
+
+- Check the time at startup and again before starting each task:
+  `powershell -Command "[System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow,'AUS Eastern Standard Time').ToString('HH:mm')"`
+- If the AEST hour is >= 09 and < 23, **do not start new work**: commit anything
+  in progress, append a PROGRESS.md note ("paused at <time> AEST — outside the
+  23:00–09:00 window"), and STOP. Do not resume until the next overnight window.
+- Aim to wrap up, commit, and stop by **08:45 AEST** so you finish cleanly before
+  the cutoff rather than mid-task.
 
 ## Hard rules (never break these)
 
 1. **Frozen suites.** `metis/suite/v1/` and `metis/suite/v2/` are immutable. New
-   tasks mean a new suite version directory, never an edit to an existing one.
-2. **Scoring is a separate, re-runnable pass.** Never fold scoring into
-   collection. Never re-run inference to re-score.
-3. **No prices in code.** Rates live in `config/pricing.yaml` and default to
-   unconfigured. Never hardcode a price anywhere.
-4. **Nothing visual ever measures.** Report/render code reads artifacts only.
-5. **Never commit secrets.** `.env` stays git-ignored. Never print or commit a
-   key. Confirm `git diff --cached --name-only` excludes `.env` before every
-   commit.
-6. **Tests gate every commit.** Run all of `python tests/test_scoring.py`,
-   `python tests/test_judge.py`, `python tests/test_memory_retrieval.py`, and
-   `python router.py --selftest` before AND after each task. If anything fails,
-   do not commit — fix it or revert and write the blocker into PROGRESS.md.
-7. **Small, frequent commits.** One commit per completed task, clear message,
-   then push. Keep every change reversible.
-8. **Stay in this repo.** Do not touch anything outside the Metis directory
-   (especially not ai-command-center). Do not delete existing `results/`.
-9. **When blocked, log and move on.** Append a dated note to PROGRESS.md
-   describing the blocker and skip to the next task rather than improvising
-   outside this plan.
+   or harder tasks go in `metis/suite/v3/`, never as edits to v1/v2.
+2. **No Anthropic API credits, and no cloud model calls, without explicit
+   approval.** Build and test against local Ollama and the mock backend only.
+   Designing v3 needs zero model calls.
+3. **Scoring stays a separate, re-runnable pass.** No prices in code (use
+   `config/pricing.yaml`). Engine stays headless. Errors are recorded and scored
+   0, never dropped.
+4. **Never commit secrets.** `.env` stays ignored; confirm `git diff --cached
+   --name-only` excludes it before every commit.
+5. **Tests gate every commit.** Before AND after each task run the full gate:
+   `python tests/test_scoring.py`, `test_judge.py`, `test_memory_retrieval.py`,
+   `test_judge_agreement.py`, `test_saturation.py`, `python router.py --selftest`,
+   `python context_scale.py --selftest`. Never commit on a failing test.
+6. **Small, frequent commits, then push.** One commit per completed task; verify
+   `git ls-remote origin main` matches local HEAD after pushing (the push prints a
+   benign credential-cacher warning but succeeds).
+7. **Real GPU runs are overnight-and-idle only.** Check
+   `curl http://localhost:11434/api/tags` first; never pass `--force` to a run; if
+   the preflight quiesce check trips, skip the run and land code + a mock test.
+8. **Stay in this repo.** Do not touch anything outside it.
 
-## Tasks (in priority order)
+## Tasks (priority order)
 
-### 1. Router evaluation artifact (highest value — the deliverable)
-Run the Phase 1 router evaluation against the existing run pair and persist it:
-`python router.py eval --local-run results/20260612_173212 --local-model qwen3:8b
---cloud-run results/20260612_214955 --cloud-model deepseek-v4-pro --threshold 0.9`
-- Save the markdown output to `results/router_eval_qwen3_8b_vs_deepseek_v4_pro.md`.
-- Sweep `--threshold` 0.85 / 0.9 / 0.95 and `--min-confidence` at two values;
-  capture each. Add a short section to `docs/FINDINGS.md` summarising classifier
-  accuracy, backend-flip rate, and the realized cost/quality vs the oracle
-  (perfect-classifier) upper bound and all-cloud. State the honest result
-  whatever it is.
+### 1. Design and build suite v3 — frontier headroom (highest value, zero credits)
+The core research issue: Claude Sonnet 4.6 saturates v1 (`metis saturation` flags
+`reference_saturated: true`), so the suite can't distinguish strong models. Build
+`metis/suite/v3/` with **12–20 harder tasks**, programmatic scoring wherever
+possible, original and contamination-safe (fictional entities):
+- harder coding with hidden/edge-case tests (not just the happy path),
+- agentic tasks deeper than depth 5, with branching and failure-recovery,
+- long-context tasks where the answer depends on distant facts, not filler,
+- adversarial summarisation with conflicting source claims,
+- instruction-following with interacting/conflicting constraints.
+Add a `test_v3_*` loader+self-validation test (mirror `test_v2_agentic_ladder_loads`
+and the coding self-validation). **Do not run frontier models.** A single local
+qwen3:8b smoke (N=1, overnight, Ollama-gated) is allowed only to confirm the suite
+loads, scores, and is non-trivial for a local model. Success: a frozen v3 suite
+that a near-frontier reference would *not* trivially max (validated later, with
+approval).
 
-### 2. Full coverage-curve rendering
-`COVERAGE_THRESHOLDS` already exists; the data is collected. Render the full
-coverage(t) curve over a fine threshold grid (e.g. 0.0..1.0 step 0.05) into the
-HTML report (`metis/report.py`) as an inline SVG, plus a markdown table. No new
-measurement — read existing scores only. Add a test that the curve is monotone
-non-increasing in t.
+### 2. WDDM silent-spill auto-detection in reports
+The 16k context cliff is observed but only described. Make it automatic: sample
+shared-GPU-memory via NVML in `metis/monitor.py` (or a decode-tok/s perf-cliff
+heuristic vs context length), and surface a `silent_spill: true` flag + a note in
+the report when a run "fits but crawls". Eval-free (uses existing data + a monitor
+change). Add tests for the detection logic with synthetic samples.
 
-### 3. Paper draft
-Create `docs/PAPER.md` — a real draft (not a skeleton) following the paper
-skeleton in `RESEARCH.md`: intro/gap, research question, methodology (cite
-METHODOLOGY.md), results (pull real numbers from FINDINGS.md, the comparison
-artifact, step-depth, and the router eval from task 1), threats to validity, and
-an artifact/reproducibility section. Honest, scannable, no hype. Mark any number
-you could not source with `[TODO: verify]` rather than inventing it.
+### 3. Router robustness on out-of-distribution prompts (FUTURE_EVALUATIONS E5)
+Hand-write ~20 OOD prompts with known categories (straddling categories, unusual
+phrasing). Run `router.py classify` on them (no model inference) and report
+classification accuracy + fail-safe rate. Replace the "best-case" caveat in
+`docs/FINDINGS.md` with this real degradation number. Near-zero cost.
 
-### 4. Judge validation scaffolding (teed up for Lachy, no fake labels)
-Do NOT fabricate human labels. Instead: create `validation/` with a script that
-(a) extracts the summarisation generations needing judgement into a
-`validation/to_label.jsonl` template with empty `human_score` fields for Lachy to
-fill, and (b) `validation/agreement.py` that, once `human_labels.jsonl` exists,
-computes judge–human agreement (correlation + mean abs error) and writes a
-report. Add plain-assert tests using a tiny synthetic labeled set. Update
-`docs/METHODOLOGY.md` §4 to point at this flow.
+### 4. llama.cpp server backend
+Implement a `llamacpp` backend (OpenAI-compatible endpoint) for controlled
+`n_gpu_layers`, mirroring the cloud/ollama backend interface and recording all
+knobs. Mock-test the request/parse path. A real run is GPU-gated and optional.
 
-### 5. Publishable results subset + repo polish
-The repo currently git-ignores all of `results/`, so GitHub shows code but no
-evidence. Create `results/published/` containing a CURATED subset that tells the
-story: the comparison report(s), `report.md`/`report.html`, the routing sim and
-router eval markdown, and `scores.jsonl` for the headline runs — but NOT raw
-model outputs or anything containing prompts that may be large. Adjust
-`.gitignore` to track `results/published/` while still ignoring everything else
-under `results/`. Update `README.md` with a short "Results" section linking the
-published artifacts and a one-paragraph headline finding. Keep the README
-quickstart accurate to the current CLI.
+### 5. Offload-cliff sweep mode (depends on 4 or Ollama num_gpu)
+Automate runs across GPU-layer counts and plot tok/s vs layers. Land the code +
+mock test even if no real run happens; a real sweep is overnight/GPU-gated.
 
-### OPTIONAL 6. Context-length scaling mode (only if Ollama is reachable)
-First check `curl http://localhost:11434/api/tags` succeeds. If and only if it
-does, implement a context-length scaling mode (suite tasks padded to
-512/2k/8k/16k context) per `RESEARCH.md` §signature experiments, and run it for
-qwen3:8b only, N=3, writing to `results/`. If Ollama is not reachable, SKIP and
-note it in PROGRESS.md — do not block on it. Never pass `--force` to a real run;
-if preflight fails, skip the run and just land the code + a mock-backend test.
+### OPTIONAL 6. Realistic-conditions mode
+Re-run the v1 suite for qwen3:8b under synthetic RAM pressure vs the clean
+baseline. Code + mock test always; real run overnight/GPU-gated only.
 
 ## End-of-run deliverable
 
-Append a dated summary to `PROGRESS.md`: tasks completed, tasks skipped and why,
-test status, commits made, and a short "what Lachy should look at first" note.
-Update `CHANGELOG.md` and tick the corresponding boxes in `ROADMAP.md`.
+Append a dated PROGRESS.md entry: tasks completed, tasks skipped and why (including
+any paused for the working-hours window), test status, commits, and a one-line
+"what Lachy should look at first". Update CHANGELOG.md and tick ROADMAP boxes.
